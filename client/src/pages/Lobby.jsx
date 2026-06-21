@@ -16,6 +16,11 @@ export default function Lobby() {
 
   const [showWakeMessage, setShowWakeMessage] = useState(false);
 
+  // Refs for VS Screen skip
+  const vsTimeoutRef = React.useRef(null);
+  const battleStateRef = React.useRef(null);
+  const battleKeyRef = React.useRef(null);
+
   // If not connected after 2 seconds, show the wake message
   useEffect(() => {
     if (isConnected) {
@@ -57,12 +62,12 @@ export default function Lobby() {
     function handleBattleStart({ playerKey, state }) {
       sessionStorage.setItem("poke-room-code", state.myKey === "p1" ? state.code : undefined); // Will fix later, room doesn't emit code in state. Just save it when joining.
       
-      // Show VS Screen hype
+      battleStateRef.current = state;
+      battleKeyRef.current = playerKey;
       setVsData({ me: state.me, opponent: state.opponent });
-      setTimeout(() => {
-        navigate(`/battle/${state.me.active.id || "live"}`, { 
-          state: { playerKey, initialBattleState: state } 
-        });
+      
+      vsTimeoutRef.current = setTimeout(() => {
+        skipVsScreen();
       }, 2500); // 2.5s hype delay
     }
 
@@ -79,8 +84,25 @@ export default function Lobby() {
       socket.off("room-created", handleRoomCreated);
       socket.off("battle-start", handleBattleStart);
       socket.off("error", handleError);
+      if (vsTimeoutRef.current) clearTimeout(vsTimeoutRef.current);
     };
   }, [socket, navigate]);
+
+  const skipVsScreen = () => {
+    if (vsTimeoutRef.current) {
+      clearTimeout(vsTimeoutRef.current);
+      vsTimeoutRef.current = null;
+    }
+    if (battleStateRef.current) {
+      const state = battleStateRef.current;
+      const playerKey = battleKeyRef.current;
+      setVsData(null);
+      navigate(`/battle/${state.me.active.id || "live"}`, { 
+        state: { playerKey, initialBattleState: state } 
+      });
+      battleStateRef.current = null;
+    }
+  };
 
   const handleCreateRoom = () => {
     if (!socket || !team) return;
@@ -225,7 +247,10 @@ export default function Lobby() {
 
       {/* VS Screen Overlay */}
       {vsData && (
-        <div className="fixed inset-0 z-50 bg-[var(--color-bg-deep)] flex flex-col items-center justify-center p-4 overflow-hidden">
+        <div 
+          className="fixed inset-0 z-50 bg-[var(--color-bg-deep)] flex flex-col items-center justify-center p-4 overflow-hidden cursor-pointer"
+          onClick={skipVsScreen}
+        >
           {/* Animated Background Elements */}
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_center,_var(--color-primary)_0%,_transparent_70%)] animate-pulse-glow"></div>
           

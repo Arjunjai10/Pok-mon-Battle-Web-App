@@ -295,10 +295,10 @@ export default function TeamBuilder() {
       </header>
 
       {/* ── Body: three panels ── */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
 
         {/* ══ LEFT: Pokémon Grid ══════════════════════════════════════════════ */}
-        <aside className="flex flex-col w-64 flex-none border-r border-[var(--color-border)] bg-[var(--color-bg-card)]">
+        <aside className={`flex-col w-full lg:w-64 flex-none border-r border-[var(--color-border)] bg-[var(--color-bg-card)] ${activePokemon ? 'hidden lg:flex' : 'flex'}`}>
           {/* Search + filter */}
           <div className="p-3 space-y-2 border-b border-[var(--color-border)]">
             <input
@@ -347,7 +347,7 @@ export default function TeamBuilder() {
         </aside>
 
         {/* ══ CENTRE: Detail Panel ═════════════════════════════════════════════ */}
-        <main className="flex-1 overflow-hidden flex flex-col">
+        <main className={`flex-1 overflow-hidden flex-col ${activePokemon ? 'flex' : 'hidden lg:flex'}`}>
           {!activePokemon ? (
             <EmptyDetailPrompt />
           ) : (
@@ -365,12 +365,13 @@ export default function TeamBuilder() {
               onSetNickname={handleSetNickname}
               onRemove={() => handleRemovePokemon(activePokemon.id)}
               isOnTeam={teamPokemonIds.has(activePokemon.id)}
+              onBack={() => setActivePokemon(null)}
             />
           )}
         </main>
 
-        {/* ══ RIGHT: Team Roster ═══════════════════════════════════════════════ */}
-        <aside className="flex flex-col w-60 flex-none border-l border-[var(--color-border)] bg-[var(--color-bg-card)]">
+        {/* ══ RIGHT: Team Roster (Desktop) ═════════════════════════════════════ */}
+        <aside className="hidden lg:flex flex-col w-60 flex-none border-l border-[var(--color-border)] bg-[var(--color-bg-card)]">
           <div className="px-4 py-3 border-b border-[var(--color-border)]">
             <h2 className="font-display font-bold text-sm text-[var(--color-text-primary)]">
               Your Team
@@ -421,6 +422,29 @@ export default function TeamBuilder() {
           )}
         </aside>
       </div>
+
+      {/* ══ BOTTOM: Mobile Team Bar ══════════════════════════════════════════ */}
+      <div className="lg:hidden flex-none border-t border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2">
+        <div className="flex justify-between items-center mb-1.5">
+          <span className="text-xs font-bold text-[var(--color-text-primary)]">Your Team ({teamPokemonIds.size}/6)</span>
+          {canProceed && (
+            <button onClick={handleProceed} className="text-xs text-[var(--color-primary)] font-bold uppercase tracking-wider bg-[var(--color-primary)]/10 px-2 py-0.5 rounded border border-[var(--color-primary)]/30">
+              Ready →
+            </button>
+          )}
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {team.map((slot, idx) => (
+            <button 
+              key={idx} 
+              onClick={() => slot && setActivePokemon(slot.pokemon)} 
+              className={`w-12 h-12 flex-shrink-0 border rounded-lg flex items-center justify-center transition-colors ${slot ? 'bg-[var(--color-bg-panel)] hover:bg-[var(--color-bg-hover)]' : 'bg-[var(--color-bg-deep)] opacity-50'} ${activePokemon?.id === slot?.pokemon?.id ? 'border-[var(--color-primary)] shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'border-[var(--color-border)]'}`}
+            >
+               {slot && <img src={slot.pokemon.spriteUrl} alt={slot.pokemon.name} className="w-8 h-8 object-contain drop-shadow-md" />}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -444,7 +468,7 @@ function EmptyDetailPrompt() {
 function DetailPanel({
   pokemon, slot, activeMoves, activeItem, activeNickname,
   learnsetGroups, moveIndex, items,
-  onToggleMove, onSetItem, onSetNickname, onRemove, isOnTeam,
+  onToggleMove, onSetItem, onSetNickname, onRemove, isOnTeam, onBack
 }) {
   const [moveSearch, setMoveSearch] = useState("");
 
@@ -454,7 +478,15 @@ function DetailPanel({
   return (
     <div className="flex flex-col h-full">
       {/* ── Top: Pokémon header ── */}
-      <div className="flex-none flex items-start gap-5 px-6 py-4 border-b border-[var(--color-border)] bg-[var(--color-bg-panel)]">
+      <div className="flex-none flex items-start gap-4 px-4 sm:px-6 py-4 border-b border-[var(--color-border)] bg-[var(--color-bg-panel)] relative">
+        {/* Mobile Back Button */}
+        <button 
+          className="lg:hidden absolute top-2 right-4 text-xs font-bold text-[var(--color-text-secondary)] hover:text-white uppercase tracking-wider border border-[var(--color-border)] px-2 py-1 rounded bg-[var(--color-bg-deep)]"
+          onClick={onBack}
+        >
+          Close
+        </button>
+
         {/* Sprite */}
         <div className="relative flex-none">
           <img

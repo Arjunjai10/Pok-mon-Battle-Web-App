@@ -41,6 +41,19 @@ export default function PokemonCard({ pokemon, selected, slotIndex, onClick, dis
         </span>
       )}
 
+      {/* Hover Stats Tooltip (Desktop only) */}
+      <div className="absolute left-1/2 -top-2 -translate-x-1/2 -translate-y-full w-44 bg-[var(--color-bg-deep)] border border-[var(--color-border-glow)] rounded-lg p-2 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none hidden sm:block">
+        <div className="text-[10px] font-bold text-center mb-1.5 text-[var(--color-primary)] uppercase tracking-wider border-b border-[var(--color-border)] pb-1">Base Stats</div>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[0.65rem]">
+          {Object.entries(pokemon.baseStats).map(([key, val]) => (
+            <div key={key} className="flex justify-between items-center">
+              <span className="text-[var(--color-text-muted)] font-mono uppercase">{key.substring(0,3)}</span>
+              <span className="font-bold tabular-nums text-[var(--color-text-primary)]">{val}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Dex number */}
       <span className="text-[0.6rem] font-mono text-[var(--color-text-muted)]">#{dexNum}</span>
 
