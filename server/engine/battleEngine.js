@@ -395,15 +395,16 @@ function canActThisTurn(pokemon, opts = {}) {
 }
 
 /**
- * executeMove(attacker, defender, move, log, opts) → { attacker, defender, log }
+ * executeMove(attacker, defender, move, log, events, targetKey, opts) → { attacker, defender, log, events }
  *
  * Runs a single move: accuracy check → damage → secondary effect.
  * Returns clones of attacker and defender.
  */
-function executeMove(attacker, defender, move, log, opts = {}) {
+function executeMove(attacker, defender, move, log, events, targetKey, opts = {}) {
   let atk = { ...attacker };
   let def = { ...defender };
   const entries = [...log];
+  const newEvents = [...events];
 
   entries.push(`${atk.name} used ${move.name}!`);
 
@@ -422,7 +423,7 @@ function executeMove(attacker, defender, move, log, opts = {}) {
   const hit = doesMoveHit(move, atk, def, opts);
   if (!hit) {
     entries.push(`${atk.name}'s attack missed!`);
-    return { attacker: atk, defender: def, log: entries };
+    return { attacker: atk, defender: def, log: entries, events: newEvents };
   }
 
   // Damage
@@ -442,8 +443,17 @@ function executeMove(attacker, defender, move, log, opts = {}) {
       entries.push(`${def.name} took ${damage} damage!`);
     }
 
+    newEvents.push({
+      type: "damage",
+      targetKey: targetKey,
+      amount: damage,
+      effectiveness: typeMultiplier,
+      isCrit: false // [GEN1] v1 scope doesn't include crits, but good for structure
+    });
+
     if (def.currentHp <= 0) {
       entries.push(`${def.name} fainted!`);
+      newEvents.push({ type: "faint", targetKey: targetKey });
     }
   }
 
@@ -454,7 +464,7 @@ function executeMove(attacker, defender, move, log, opts = {}) {
     entries.push(result.log);
   }
 
-  return { attacker: atk, defender: def, log: entries };
+  return { attacker: atk, defender: def, log: entries, events: newEvents };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -605,15 +615,16 @@ function checkWinCondition(playerState) {
  * @param {object} p1Action
  * @param {object} p2Action
  * @param {object} [opts] - RNG overrides for testing: { randomFactor, hitRoll, paralysisRoll, thawRoll }
- * @returns {{ newState: object, log: string[] }}
+ * @returns {{ newState: object, log: string[], events: object[] }}
  */
 function resolveTurn(battleState, p1Action, p2Action, opts = {}) {
   if (battleState.winner) {
-    return { newState: battleState, log: ["The battle is already over!"] };
+    return { newState: battleState, log: ["The battle is already over!"], events: [] };
   }
 
   let state = cloneState(battleState);
   let log = [];
+  let events = [];
 
   // Determine who acts first
   const order = determineTurnOrder(state.p1, state.p2, p1Action, p2Action);
@@ -656,11 +667,14 @@ function resolveTurn(battleState, p1Action, p2Action, opts = {}) {
       state[targetKey].active,
       action.move,
       log,
+      events,
+      targetKey,
       opts
     );
     state[actorKey].active = result.attacker;
     state[targetKey].active = result.defender;
     log = result.log;
+    events = result.events;
   }
 
   // ── First actor's action ──────────────────────────────────────────────────
@@ -701,7 +715,7 @@ function resolveTurn(battleState, p1Action, p2Action, opts = {}) {
     log.push("Player 2 has no more Pokémon! Player 1 wins!");
   }
 
-  return { newState: state, log };
+  return { newState: state, log, events };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

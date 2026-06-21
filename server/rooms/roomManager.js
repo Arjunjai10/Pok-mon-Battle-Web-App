@@ -208,7 +208,7 @@ class RoomManager {
 
   /**
    * Resolve the current turn (both actions must be submitted).
-   * Returns { newState, log, forceSwitches: Set<playerKey>, winner } or null.
+   * Returns { newState, log, events, forceSwitches: Set<playerKey>, winner } or null.
    */
   resolveTurn(code) {
     const room = this.rooms.get(code);
@@ -222,7 +222,7 @@ class RoomManager {
     room.players.p2.pendingAction = null;
 
     // Run the engine
-    const { newState, log } = resolveTurn(room.battleState, p1Action, p2Action);
+    const { newState, log, events } = resolveTurn(room.battleState, p1Action, p2Action);
     room.battleState = newState;
 
     // Determine which players need a forced switch (active fainted, bench not empty)
@@ -243,7 +243,7 @@ class RoomManager {
       room.phase = "picking";
     }
 
-    return { newState, log, forceSwitches, winner: newState.winner };
+    return { newState, log, events, forceSwitches, winner: newState.winner };
   }
 
   /**

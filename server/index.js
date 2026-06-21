@@ -126,11 +126,11 @@ io.on("connection", (socket) => {
         const resolved = rooms.resolveTurn(code);
         if (!resolved) return;
 
-        const { log: turnLog, forceSwitches, winner } = resolved;
+        const { log: turnLog, events, forceSwitches, winner } = resolved;
         log(`turn resolved  ${code}  turn=${room.battleState?.turn}  winner=${winner ?? "none"}  forceSwitches=[${[...forceSwitches].join(",")}]`);
 
         // Send personalised turn-result to each player
-        broadcastPlayerStates(room, "turn-result", { log: turnLog });
+        broadcastPlayerStates(room, "turn-result", { log: turnLog, events });
 
         if (winner) {
           // battle-over is already embedded in each player's state.phase

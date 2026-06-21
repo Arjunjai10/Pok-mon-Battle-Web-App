@@ -5,41 +5,40 @@
 
 @theme {
   /* ── Color Palette ── */
-  --color-bg-deep:     #0a0e1a;
-  --color-bg-card:     #111827;
-  --color-bg-panel:    #1a2235;
-  --color-bg-hover:    #1e2d42;
-  --color-border:      #2a3a52;
-  --color-border-glow: #3b5ea6;
+  --color-bg-deep:     #0F1117; /* Charcoal */
+  --color-bg-card:     #1A1D29; /* Slate */
+  --color-bg-panel:    #212534;
+  --color-bg-hover:    #2A2E3F;
+  --color-border:      #2A2E3F;
+  --color-border-glow: #3A4259;
 
   --color-primary:     #4f8ef7;
-  --color-primary-dim: #2a5cbf;
-  --color-accent:      #f7c94f;
-  --color-accent-dim:  #c49b20;
+  --color-accent:      #FFCB05; /* Electric Yellow */
+  --color-accent-dim:  #cc9f00;
   --color-success:     #4ade80;
   --color-danger:      #f87171;
   --color-warning:     #fb923c;
 
   --color-text-primary:   #e8edf5;
-  --color-text-secondary: #8fa3bf;
-  --color-text-muted:     #4a5e78;
+  --color-text-secondary: #a3b8cc;
+  --color-text-muted:     #64748b;
 
-  /* ── Type Colors ── */
-  --color-type-normal:   #a8a878;
-  --color-type-fire:     #f08030;
-  --color-type-water:    #6890f0;
-  --color-type-electric: #f8d030;
-  --color-type-grass:    #78c850;
-  --color-type-ice:      #98d8d8;
-  --color-type-fighting: #c03028;
-  --color-type-poison:   #a040a0;
-  --color-type-ground:   #e0c068;
-  --color-type-flying:   #a890f0;
-  --color-type-psychic:  #f85888;
-  --color-type-bug:      #a8b820;
-  --color-type-rock:     #b8a038;
-  --color-type-ghost:    #705898;
-  --color-type-dragon:   #7038f8;
+  /* ── Type Colors (Gen 1 Standardized) ── */
+  --color-type-normal:   #A8A77A;
+  --color-type-fire:     #EE8130;
+  --color-type-water:    #6390F0;
+  --color-type-electric: #F7D02C;
+  --color-type-grass:    #7AC74C;
+  --color-type-ice:      #96D9D6;
+  --color-type-fighting: #C22E28;
+  --color-type-poison:   #A33EA1;
+  --color-type-ground:   #E2BF65;
+  --color-type-flying:   #A98FF3;
+  --color-type-psychic:  #F95587;
+  --color-type-bug:      #A6B91A;
+  --color-type-rock:     #B6A136;
+  --color-type-ghost:    #735797;
+  --color-type-dragon:   #6F35FC;
 
   /* ── Typography ── */
   --font-display: "Exo 2", "Inter", system-ui, sans-serif;
