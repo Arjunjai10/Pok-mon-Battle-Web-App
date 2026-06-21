@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Color Palette ── */
+  --color-bg-deep:     #0a0e1a;
+  --color-bg-card:     #111827;
+  --color-bg-panel:    #1a2235;
+  --color-bg-hover:    #1e2d42;
+  --color-border:      #2a3a52;
+  --color-border-glow: #3b5ea6;
+
+  --color-primary:     #4f8ef7;
+  --color-primary-dim: #2a5cbf;
+  --color-accent:      #f7c94f;
+  --color-accent-dim:  #c49b20;
+  --color-success:     #4ade80;
+  --color-danger:      #f87171;
+  --color-warning:     #fb923c;
+
+  --color-text-primary:   #e8edf5;
+  --color-text-secondary: #8fa3bf;
+  --color-text-muted:     #4a5e78;
+
+  /* ── Type Colors ── */
+  --color-type-normal:   #a8a878;
+  --color-type-fire:     #f08030;
+  --color-type-water:    #6890f0;
+  --color-type-electric: #f8d030;
+  --color-type-grass:    #78c850;
+  --color-type-ice:      #98d8d8;
+  --color-type-fighting: #c03028;
+  --color-type-poison:   #a040a0;
+  --color-type-ground:   #e0c068;
+  --color-type-flying:   #a890f0;
+  --color-type-psychic:  #f85888;
+  --color-type-bug:      #a8b820;
+  --color-type-rock:     #b8a038;
+  --color-type-ghost:    #705898;
+  --color-type-dragon:   #7038f8;
+
+  /* ── Typography ── */
+  --font-display: "Exo 2", "Inter", system-ui, sans-serif;
+  --font-body:    "Inter", system-ui, sans-serif;
+  --font-mono:    "JetBrains Mono", "Fira Code", monospace;
+
+  /* ── Spacing & Radius ── */
+  --radius-card:  12px;
+  --radius-badge: 6px;
+  --radius-btn:   8px;
+}
+
+/* ── Google Fonts ── */
+@import url("https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap");
+
+/* ── Base Reset ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg-deep);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-border-glow); }
+
+/* ── Selection ── */
+::selection { background: var(--color-primary); color: white; }
+
+/* ── Animations ── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px 2px rgba(79, 142, 247, 0.3); }
+  50%       { box-shadow: 0 0 20px 6px rgba(79, 142, 247, 0.6); }
+}
+@keyframes hp-drain {
+  from { width: var(--hp-from); }
+  to   { width: var(--hp-to); }
+}
+
+.animate-fade-in   { animation: fade-in  0.25s ease both; }
+.animate-scale-in  { animation: scale-in 0.2s  ease both; }
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+/* ── Type badge utility ── */
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-badge);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: white;
+}
+
+/* ── Skeleton loading ── */
+.skeleton {
+  background: linear-gradient(90deg,
+    var(--color-bg-panel) 25%,
+    var(--color-bg-hover) 50%,
+    var(--color-bg-panel) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 6px;
+}
+
+/* ── Glass card ── */
+.glass-card {
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+
+/* ── Scrollable panel ── */
+.scroll-panel {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
