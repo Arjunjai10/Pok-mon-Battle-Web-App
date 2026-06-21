@@ -463,7 +463,7 @@ function DetailPanel({
       <div className="flex-none flex items-start gap-4 px-4 sm:px-6 py-4 border-b border-[var(--color-border)] bg-[var(--color-bg-panel)] relative">
         {/* Mobile Back Button */}
         <button 
-          className="lg:hidden absolute top-2 right-4 text-xs font-bold text-[var(--color-text-secondary)] hover:text-white uppercase tracking-wider border border-[var(--color-border)] px-2 py-1 rounded bg-[var(--color-bg-deep)]"
+          className="lg:hidden absolute top-2 right-4 text-xs font-bold text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] uppercase tracking-wider border border-[var(--color-border)] px-2 py-1 rounded bg-[var(--color-bg-deep)]"
           onClick={onBack}
         >
           Close
@@ -676,7 +676,7 @@ function MovePicker({ isOnTeam, activeMoves, filteredGroups, moveIndex, onToggle
               title="Click to remove"
             >
               <div className="absolute inset-0 bg-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                 <span className="text-white font-bold text-xs uppercase tracking-widest drop-shadow-md">Remove</span>
+                 <span className="text-[var(--color-danger)] font-bold text-xs uppercase tracking-widest drop-shadow-sm">Remove</span>
               </div>
               <div className="flex justify-between w-full items-baseline group-hover:opacity-10 transition-opacity">
                 <span className="font-bold text-[var(--color-text-primary)] text-sm truncate">{formatMoveName(m.name)}</span>

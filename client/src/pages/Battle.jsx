@@ -203,7 +203,7 @@ export default function Battle() {
     if (!visible || event.type === "faint") return null;
 
     let subtext = "";
-    let color = "text-white";
+    let color = "text-[var(--color-text-primary)]";
     if (event.effectiveness >= 2) {
       subtext = "Super Effective!";
       color = "text-[var(--color-warning)]";
@@ -273,7 +273,11 @@ export default function Battle() {
       </div>
 
       {/* Battle Field */}
-      <div className="flex-1 glass-card relative p-4 sm:p-6 flex flex-col justify-between overflow-y-auto bg-gradient-to-b from-[#1a202c] to-[#0f172a]">
+      <div className="flex-1 glass-card relative p-4 sm:p-6 flex flex-col justify-between overflow-y-auto bg-gradient-to-b from-[var(--color-bg-deep)] to-[var(--color-bg-panel)]">
+        {/* Environment Decor */}
+        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(ellipse_at_center,_var(--color-primary)_0%,_transparent_70%)]"></div>
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8Y2lyY2xlIGN4PSIyIiBjeT0iMiIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIvPgo8L3N2Zz4=')] opacity-50"></div>
+        
         {/* Opponent */}
         <div className="self-start w-full">
           {renderActivePokemon(opponent.active, true)}
@@ -299,7 +303,7 @@ export default function Battle() {
               </div>
               {lockedAction && (
                 <div className="text-xs text-[var(--color-text-muted)] bg-[var(--color-bg-deep)] px-3 py-1.5 rounded-full border border-[var(--color-border)]">
-                  Locked in: <strong className="text-white">{lockedAction.type === "move" ? lockedAction.move.name : "Switch"}</strong>
+                  Locked in: <strong className="text-[var(--color-text-primary)]">{lockedAction.type === "move" ? lockedAction.move.name : "Switch"}</strong>
                 </div>
               )}
             </div>
@@ -359,7 +363,7 @@ export default function Battle() {
                 <span className="text-sm font-bold text-[var(--color-text-primary)]">
                   Switch to:
                 </span>
-                <button onClick={() => setUiView("main")} className="text-xs text-[var(--color-text-muted)] hover:text-white uppercase">Cancel</button>
+                <button onClick={() => setUiView("main")} className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] uppercase">Cancel</button>
               </div>
               <div className="flex flex-col gap-2">
                 {me.bench.map((b) => (
@@ -402,7 +406,7 @@ export default function Battle() {
 
       {/* Opponent Reconnecting Modal */}
       {opponentReconnectingMsg && (
-        <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="absolute inset-0 z-40 bg-[var(--color-bg-deep)]/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="glass-card p-6 text-center max-w-sm w-full animate-fade-in border-[var(--color-warning)]">
             <div className="text-[var(--color-warning)] mb-4 w-8 h-8 mx-auto animate-spin rounded-full border-2 border-[var(--color-warning)] border-t-transparent"></div>
             <div className="font-bold text-lg mb-2">{opponentReconnectingMsg}</div>
@@ -415,7 +419,7 @@ export default function Battle() {
 
       {/* Force Switch Modal Drawer */}
       {phase === "force-switch" && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4 animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[var(--color-bg-deep)]/60 backdrop-blur-sm p-2 sm:p-4 animate-fade-in">
           <div className="w-full max-w-xl bg-[var(--color-bg-deep)] border border-[var(--color-border)] rounded-t-xl p-4 sm:p-6 shadow-2xl animate-slide-up pb-10">
             <div className="text-xl font-bold text-[var(--color-danger)] mb-4 text-center">Your Pokémon fainted! Choose replacement:</div>
             <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
@@ -439,7 +443,7 @@ export default function Battle() {
       )}
 
       {modalMessage && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-[var(--color-bg-deep)]/80 flex items-center justify-center z-50 p-4">
           <div className="glass-card p-8 max-w-sm w-full text-center space-y-6">
             <div className="text-4xl">🔌</div>
             <h2 className="text-xl font-bold text-[var(--color-text-primary)]">Connection Lost</h2>

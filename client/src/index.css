@@ -4,24 +4,24 @@
 @import "tailwindcss";
 
 @theme {
-  /* ── Color Palette ── */
-  --color-bg-deep:     #0F1117; /* Charcoal */
-  --color-bg-card:     #1A1D29; /* Slate */
-  --color-bg-panel:    #212534;
-  --color-bg-hover:    #2A2E3F;
-  --color-border:      #2A2E3F;
-  --color-border-glow: #3A4259;
+  /* ── Color Palette (Light Theme) ── */
+  --color-bg-deep:     #F3F4F6; /* Light gray */
+  --color-bg-card:     #FFFFFF; /* White */
+  --color-bg-panel:    #F9FAFB;
+  --color-bg-hover:    #E5E7EB;
+  --color-border:      #E5E7EB;
+  --color-border-glow: #D1D5DB;
 
-  --color-primary:     #4f8ef7;
-  --color-accent:      #FFCB05; /* Electric Yellow */
-  --color-accent-dim:  #cc9f00;
-  --color-success:     #4ade80;
-  --color-danger:      #f87171;
-  --color-warning:     #fb923c;
+  --color-primary:     #3B82F6;
+  --color-accent:      #EAB308; /* Yellow */
+  --color-accent-dim:  #CA8A04;
+  --color-success:     #22C55E;
+  --color-danger:      #EF4444;
+  --color-warning:     #F97316;
 
-  --color-text-primary:   #e8edf5;
-  --color-text-secondary: #a3b8cc;
-  --color-text-muted:     #64748b;
+  --color-text-primary:   #111827;
+  --color-text-secondary: #4B5563;
+  --color-text-muted:     #6B7280;
 
   /* ── Type Colors (Gen 1 Standardized) ── */
   --color-type-normal:   #A8A77A;
@@ -127,10 +127,11 @@ body {
 
 /* ── Glass card ── */
 .glass-card {
-  background: rgba(17, 24, 39, 0.7);
+  background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(12px);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 /* ── Skeleton loading ── */

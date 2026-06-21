@@ -72,7 +72,7 @@ export default function MoveButton({ move, selected, disabled, onClick, levelHin
       {/* Status effect chip */}
       {move.statusEffect && (
         <span className="flex-none px-1.5 py-0.5 rounded text-[0.55rem] font-bold uppercase tracking-wider"
-          style={{ backgroundColor: "#7c3aed22", color: "#a78bfa", border: "1px solid #7c3aed55" }}>
+          style={{ backgroundColor: "#7c3aed22", color: "#7c3aed", border: "1px solid #7c3aed55" }}>
           {move.statusEffect}
         </span>
       )}
