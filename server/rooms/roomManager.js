@@ -346,6 +346,8 @@ class RoomManager {
       sleepTurns:myPS.active.sleepTurns,
       heldItem: myPS.active.heldItem,
       spriteUrl:myPS.active.spriteUrl,
+      currentStats: myPS.active.currentStats,
+      statStages: myPS.active.statStages,
       // Full moves with current PP
       moves: myPS.active.moves.map((m) => ({
         name: m.name,
@@ -356,6 +358,8 @@ class RoomManager {
         currentPp: m.currentPp,
         priority: m.priority,
         statusEffect: m.statusEffect,
+        effect: m.effect,
+        damageClass: m.damageClass,
       })),
     };
 
@@ -367,6 +371,9 @@ class RoomManager {
       maxHp:    oppPS.active.maxHp,
       status:   oppPS.active.status,
       spriteUrl:oppPS.active.spriteUrl,
+      heldItem: oppPS.active.heldItem,
+      currentStats: oppPS.active.currentStats,
+      statStages: oppPS.active.statStages,
       // No moves — opponent's moveset is hidden until they use them (battle log reveals)
     };
 

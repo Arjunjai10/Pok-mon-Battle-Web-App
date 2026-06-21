@@ -297,7 +297,7 @@ export default function Battle() {
           {renderStatusIcon(p.status)}
           {myEvents.map(e => <FloatingDamage key={e.id} event={e} />)}
         </div>
-        <div className={`glass-card p-3 w-full sm:w-auto sm:flex-1 max-w-[240px] transition-opacity duration-500 ${p.currentHp <= 0 ? "opacity-30" : ""}`}>
+        <div className={`group relative cursor-help glass-card p-3 w-full sm:w-auto sm:flex-1 max-w-[240px] transition-opacity duration-500 ${p.currentHp <= 0 ? "opacity-30" : ""}`}>
           <div className="flex justify-between items-baseline mb-1">
             <div className="font-bold text-[var(--color-text-primary)] text-sm sm:text-base">
               {p.name}
@@ -306,6 +306,35 @@ export default function Battle() {
           </div>
           <HpBar current={p.currentHp} max={p.maxHp} />
           {renderStatStages(p.statStages)}
+          
+          {/* Pokemon Tooltip */}
+          {p.currentStats && (
+            <div className={`hidden group-hover:block absolute ${isOpponent ? 'top-full left-0 mt-2' : 'bottom-full right-0 mb-2'} w-64 p-3 bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded shadow-2xl text-left z-[100] text-xs cursor-default`}>
+              <div className="font-bold text-[var(--color-text-primary)] mb-1 text-sm flex justify-between items-center">
+                <span>{p.name}</span>
+                <div className="flex gap-1">
+                  {p.types.map(t => (
+                    <span key={t} className="px-1.5 py-0.5 rounded uppercase tracking-wider text-[9px] text-white" style={{ backgroundColor: `var(--color-type-${t.toLowerCase()})` }}>{t}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="text-[var(--color-text-secondary)] mb-1">
+                HP: {Math.max(0, p.currentHp)} / {p.maxHp} ({Math.round(Math.max(0, p.currentHp)/p.maxHp*100)}%)
+              </div>
+              {p.heldItem && (
+                <div className="text-[var(--color-text-secondary)] mb-2 capitalize">
+                  Item: <span className="text-[var(--color-text-primary)]">{p.heldItem.replace(/-/g, " ")}</span>
+                </div>
+              )}
+              <div className="grid grid-cols-5 gap-1 pt-2 border-t border-[var(--color-border)] text-center text-[10px]">
+                <div><div className="text-[var(--color-text-muted)] font-bold">Atk</div><div className="text-[var(--color-text-primary)]">{p.currentStats.attack}</div></div>
+                <div><div className="text-[var(--color-text-muted)] font-bold">Def</div><div className="text-[var(--color-text-primary)]">{p.currentStats.defense}</div></div>
+                <div><div className="text-[var(--color-text-muted)] font-bold">SpA</div><div className="text-[var(--color-text-primary)]">{p.currentStats.specialAttack}</div></div>
+                <div><div className="text-[var(--color-text-muted)] font-bold">SpD</div><div className="text-[var(--color-text-primary)]">{p.currentStats.specialDefense}</div></div>
+                <div><div className="text-[var(--color-text-muted)] font-bold">Spe</div><div className="text-[var(--color-text-primary)]">{p.currentStats.speed}</div></div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -392,7 +421,7 @@ export default function Battle() {
                     key={i}
                     onClick={() => handleMove(m)}
                     disabled={m.currentPp <= 0}
-                    className="flex flex-col items-start justify-center px-3 py-2 rounded disabled:opacity-50 transition-colors border"
+                    className="group relative flex flex-col items-start justify-center px-3 py-2 rounded disabled:opacity-50 transition-colors border"
                     style={{
                       borderColor: `var(--color-type-${m.type.toLowerCase()})`,
                       backgroundColor: `color-mix(in srgb, var(--color-type-${m.type.toLowerCase()}) 15%, var(--color-bg-panel))`,
@@ -404,6 +433,20 @@ export default function Battle() {
                     </div>
                     <div className="text-[0.65rem] text-[var(--color-text-muted)] uppercase tracking-wider font-bold">
                       {m.type}
+                    </div>
+
+                    {/* Move Tooltip */}
+                    <div className="hidden group-hover:block absolute bottom-full left-0 mb-2 w-56 p-2 bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded shadow-2xl text-left z-[100] text-xs cursor-default">
+                      <div className="font-bold text-[var(--color-text-primary)] mb-1.5 flex items-center gap-2">
+                        <span className="px-1.5 py-0.5 rounded uppercase tracking-wider text-[9px] text-white" style={{ backgroundColor: `var(--color-type-${m.type.toLowerCase()})` }}>{m.type}</span>
+                        {m.damageClass && <span className="text-[var(--color-text-muted)] capitalize text-[10px]">{m.damageClass}</span>}
+                      </div>
+                      <div className="text-[var(--color-text-secondary)] mb-1.5">
+                        Power: <span className="text-[var(--color-text-primary)]">{m.power || "—"}</span> | Acc: <span className="text-[var(--color-text-primary)]">{m.accuracy || "—"}</span>
+                      </div>
+                      <div className="text-[var(--color-text-primary)] leading-snug">
+                        {m.effect || "No additional effect."}
+                      </div>
                     </div>
                   </button>
                 ))}
