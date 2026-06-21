@@ -237,7 +237,16 @@ io.on("connection", (socket) => {
       const sid = room.players[key]?.socketId;
       if (!sid) continue;
       const state = rooms.buildClientState(room, key);
-      io.to(sid).emit(event, { state, ...extra });
+      
+      const payload = { state, ...extra };
+      if (extra.events) {
+        payload.events = extra.events.map(e => ({
+          ...e,
+          target: e.targetKey === key ? "me" : "opponent",
+        }));
+      }
+
+      io.to(sid).emit(event, payload);
     }
   }
 });

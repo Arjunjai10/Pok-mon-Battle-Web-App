@@ -15,6 +15,13 @@ export default function Battle() {
   const [modalMessage, setModalMessage] = useState(null);
   const [opponentReconnectingMsg, setOpponentReconnectingMsg] = useState(null);
   const [rematchWaiting, setRematchWaiting] = useState(false);
+  const [floatingEvents, setFloatingEvents] = useState([]);
+  const [lockedAction, setLockedAction] = useState(null);
+
+  // Removes a floating event after its animation finishes
+  const removeFloatingEvent = useCallback((id) => {
+    setFloatingEvents((prev) => prev.filter((e) => e.id !== id));
+  }, []);
 
   useEffect(() => {
     if (!gameState) {
@@ -36,16 +43,26 @@ export default function Battle() {
       setRematchWaiting(false);
     }
 
-    function handleTurnResult({ state, log }) {
+    function handleTurnResult({ state, log, events }) {
       setGameState(state);
+      setLockedAction(null);
       if (log && log.length > 0) {
         setLogEntries((prev) => [...prev, ...log]);
+      }
+      if (events && events.length > 0) {
+        const timedEvents = events.map((e, idx) => ({ 
+          ...e, 
+          id: Math.random().toString(36).substring(2, 9),
+          delay: idx * 1200 // Stagger by 1.2s each
+        }));
+        setFloatingEvents((prev) => [...prev, ...timedEvents]);
       }
       setUiView("main");
     }
 
     function handleForceSwitchResult({ state, log }) {
       setGameState(state);
+      setLockedAction(null);
       if (log && log.length > 0) {
         setLogEntries((prev) => [...prev, ...log]);
       }
@@ -128,56 +145,110 @@ export default function Battle() {
   const { me, opponent, phase, turn, forceSwitchBench } = gameState;
 
   const handleMove = (move) => {
+    setLockedAction({ type: "move", move });
     socket.emit("submit-action", { type: "move", move });
   };
 
-  const handleSwitch = (benchIndex) => {
+  const handleSwitch = (switchToIndex) => {
     if (phase === "force-switch") {
-      socket.emit("submit-force-switch", { switchTo: benchIndex });
+      socket.emit("submit-force-switch", { switchTo: switchToIndex });
     } else {
-      socket.emit("submit-action", { type: "switch", switchTo: benchIndex });
+      setLockedAction({ type: "switch", switchTo: switchToIndex });
+      socket.emit("submit-action", { type: "switch", switchTo: switchToIndex });
     }
   };
 
-  const renderStatus = (status) => {
+  const renderStatusIcon = (status) => {
     if (!status) return null;
     const colors = {
-      burn: "bg-red-500/20 text-red-400 border-red-500/50",
-      poison: "bg-purple-500/20 text-purple-400 border-purple-500/50",
-      paralysis: "bg-yellow-500/20 text-yellow-400 border-yellow-500/50",
-      sleep: "bg-blue-500/20 text-blue-400 border-blue-500/50",
-      freeze: "bg-cyan-500/20 text-cyan-400 border-cyan-500/50",
+      burn: "bg-red-500 border-red-300 text-white",
+      poison: "bg-purple-600 border-purple-300 text-white",
+      paralysis: "bg-yellow-400 border-yellow-200 text-black",
+      sleep: "bg-slate-500 border-slate-300 text-white",
+      freeze: "bg-cyan-400 border-cyan-100 text-black",
+    };
+    const labels = {
+      burn: "BRN",
+      poison: "PSN",
+      paralysis: "PAR",
+      sleep: "SLP",
+      freeze: "FRZ",
     };
     return (
-      <span className={`text-[0.6rem] font-bold uppercase px-1.5 py-0.5 rounded border ${colors[status]} ml-2`}>
-        {status}
-      </span>
+      <div className={`absolute -bottom-2 sm:-bottom-0 -right-2 sm:-right-4 px-2 py-0.5 rounded-sm text-[10px] sm:text-xs font-black border shadow-md ${colors[status]} z-10 tracking-wider`}>
+        {labels[status]}
+      </div>
     );
   };
 
-  const renderActivePokemon = (p, isOpponent) => (
-    <div className={`flex flex-col sm:flex-row items-center sm:items-end gap-2 sm:gap-4 ${isOpponent ? "" : "sm:flex-row-reverse"}`}>
-      <div className="relative w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0">
-        <img 
-          src={p.spriteUrl} 
-          alt={p.name} 
-          className={`w-full h-full object-contain ${p.currentHp <= 0 ? "animate-faint-sink" : "transition-all duration-500"}`}
-        />
+  const FloatingDamage = ({ event }) => {
+    const [visible, setVisible] = useState(false);
+
+    useEffect(() => {
+      const showTimer = setTimeout(() => setVisible(true), event.delay || 0);
+      const removeTimer = setTimeout(() => removeFloatingEvent(event.id), (event.delay || 0) + 2000);
+      return () => { clearTimeout(showTimer); clearTimeout(removeTimer); };
+    }, [event.id, event.delay]);
+
+    if (!visible || event.type === "faint") return null;
+
+    let subtext = "";
+    let color = "text-white";
+    if (event.effectiveness >= 2) {
+      subtext = "Super Effective!";
+      color = "text-[var(--color-warning)]";
+    } else if (event.effectiveness <= 0.5 && event.effectiveness > 0) {
+      subtext = "Not very effective...";
+      color = "text-gray-400";
+    } else if (event.effectiveness === 0) {
+      subtext = "No effect!";
+      color = "text-gray-500";
+    }
+
+    return (
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 pointer-events-none animate-float-up z-50 flex flex-col items-center">
+        <span className={`text-4xl font-black ${color} drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] tabular-nums`}>
+          -{event.amount}
+        </span>
+        {subtext && (
+          <span className={`text-sm font-bold ${color} drop-shadow-md mt-1 whitespace-nowrap`}>
+            {subtext}
+          </span>
+        )}
       </div>
-      <div className={`glass-card p-3 w-full sm:w-auto sm:flex-1 max-w-[240px] transition-opacity duration-500 ${p.currentHp <= 0 ? "opacity-30" : ""}`}>
-        <div className="flex justify-between items-baseline mb-1">
-          <div className="font-bold text-[var(--color-text-primary)] text-sm sm:text-base">
-            {p.name} {renderStatus(p.status)}
-          </div>
-          <div className="text-[10px] sm:text-xs font-mono text-[var(--color-text-muted)]">Lv.100</div>
+    );
+  };
+
+  const renderActivePokemon = (p, isOpponent) => {
+    const targetKey = isOpponent ? "opponent" : "me";
+    const myEvents = floatingEvents.filter(e => e.target === targetKey);
+
+    return (
+      <div className={`flex flex-col sm:flex-row items-center sm:items-end gap-2 sm:gap-4 ${isOpponent ? "" : "sm:flex-row-reverse"}`}>
+        <div className="relative w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0">
+          <img 
+            src={p.spriteUrl} 
+            alt={p.name} 
+            className={`w-full h-full object-contain ${p.currentHp <= 0 ? "animate-faint-sink" : "transition-all duration-500"}`}
+          />
+          {renderStatusIcon(p.status)}
+          {myEvents.map(e => <FloatingDamage key={e.id} event={e} />)}
         </div>
-        <HpBar current={p.currentHp} max={p.maxHp} />
+        <div className={`glass-card p-3 w-full sm:w-auto sm:flex-1 max-w-[240px] transition-opacity duration-500 ${p.currentHp <= 0 ? "opacity-30" : ""}`}>
+          <div className="flex justify-between items-baseline mb-1">
+            <div className="font-bold text-[var(--color-text-primary)] text-sm sm:text-base">
+              {p.name}
+            </div>
+            <div className="text-[10px] sm:text-xs font-mono text-[var(--color-text-muted)]">Lv.100</div>
+          </div>
+          <HpBar current={p.currentHp} max={p.maxHp} />
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-[var(--color-bg-deep)] p-2 sm:p-4 max-w-4xl mx-auto gap-2 sm:gap-4">
+    <div className="flex flex-col h-[100dvh] bg-[var(--color-bg-deep)] p-2 sm:p-4 max-w-4xl mx-auto gap-2 sm:gap-4 font-body">
       
       {/* Header */}
       <div className="flex justify-between items-center glass-card px-4 py-2 flex-shrink-0">
@@ -211,35 +282,16 @@ export default function Battle() {
         <div className="flex-1 glass-card p-3 sm:p-4 min-h-[160px] md:min-h-0">
           
           {phase === "waiting" && (
-            <div className="flex h-full items-center justify-center text-[var(--color-text-secondary)] font-medium">
-              Waiting for opponent...
-            </div>
-          )}
-
-          {phase === "opponent-switching" && (
-            <div className="flex h-full items-center justify-center text-[var(--color-text-secondary)] font-medium">
-              Waiting for opponent to replace fainted Pokémon...
-            </div>
-          )}
-
-          {phase === "battle-over" && (
-            <div className="flex flex-col h-full items-center justify-center text-center gap-3">
-              <div className="text-xl font-bold text-[var(--color-primary)]">Battle Over</div>
-              <div className="flex gap-4">
-                <button 
-                  onClick={() => socket.emit("submit-rematch")}
-                  disabled={rematchWaiting}
-                  className="px-4 py-2 bg-[var(--color-success)] text-green-950 font-bold rounded border border-green-500 hover:bg-green-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {rematchWaiting ? "Waiting for Opponent..." : "Rematch"}
-                </button>
-                <button 
-                  onClick={() => { socket.disconnect(); navigate("/"); }}
-                  className="px-4 py-2 bg-[var(--color-bg-panel)] rounded border border-[var(--color-border)] hover:bg-[var(--color-bg-hover)] transition-colors"
-                >
-                  Return to Lobby
-                </button>
+            <div className="flex flex-col h-full items-center justify-center text-[var(--color-text-secondary)] gap-3">
+              <div className="flex items-center gap-2 animate-pulse">
+                <div className="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)]"></div>
+                <span className="font-medium">Waiting for opponent...</span>
               </div>
+              {lockedAction && (
+                <div className="text-xs text-[var(--color-text-muted)] bg-[var(--color-bg-deep)] px-3 py-1.5 rounded-full border border-[var(--color-border)]">
+                  Locked in: <strong className="text-white">{lockedAction.type === "move" ? lockedAction.move.name : "Switch"}</strong>
+                </div>
+              )}
             </div>
           )}
 
@@ -247,28 +299,15 @@ export default function Battle() {
             <div className="grid grid-cols-2 gap-3 h-full">
               <button 
                 onClick={() => setUiView("fight")}
-                disabled={me.active.currentHp <= 0}
-                className="bg-red-500/20 hover:bg-red-500/30 text-red-200 border border-red-500/50 rounded-lg font-bold text-lg transition-colors disabled:opacity-50"
+                className="bg-[var(--color-primary-dim)] hover:bg-[var(--color-primary)] border border-[var(--color-border-glow)] rounded text-[var(--color-text-primary)] font-bold transition-colors text-lg"
               >
                 FIGHT
               </button>
               <button 
                 onClick={() => setUiView("switch")}
-                className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-200 border border-blue-500/50 rounded-lg font-bold text-lg transition-colors"
+                className="bg-[var(--color-bg-panel)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-secondary)] font-bold transition-colors text-lg"
               >
                 POKéMON
-              </button>
-              <button 
-                disabled
-                className="bg-[var(--color-bg-panel)] text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-lg font-bold text-lg opacity-50 cursor-not-allowed"
-              >
-                BAG
-              </button>
-              <button 
-                onClick={() => { socket.disconnect(); navigate("/"); }}
-                className="bg-[var(--color-bg-panel)] hover:bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] border border-[var(--color-border)] rounded-lg font-bold text-lg transition-colors"
-              >
-                RUN
               </button>
             </div>
           )}
@@ -277,7 +316,7 @@ export default function Battle() {
             <div className="flex flex-col h-full">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-bold text-[var(--color-text-primary)]">Select a move:</span>
-                <button onClick={() => setUiView("main")} className="text-xs text-[var(--color-text-muted)] hover:text-white uppercase">Cancel</button>
+                <button onClick={() => setUiView("main")} className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] uppercase font-bold tracking-wider">Cancel</button>
               </div>
               <div className="grid grid-cols-2 gap-2 flex-1">
                 {me.active.moves.map((m, i) => (
@@ -285,13 +324,17 @@ export default function Battle() {
                     key={i}
                     onClick={() => handleMove(m)}
                     disabled={m.currentPp <= 0}
-                    className="flex flex-col items-start justify-center px-3 py-2 bg-[var(--color-bg-panel)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] rounded disabled:opacity-50 transition-colors"
+                    className="flex flex-col items-start justify-center px-3 py-2 rounded disabled:opacity-50 transition-colors border"
+                    style={{
+                      borderColor: `var(--color-type-${m.type.toLowerCase()})`,
+                      backgroundColor: `color-mix(in srgb, var(--color-type-${m.type.toLowerCase()}) 15%, var(--color-bg-panel))`,
+                    }}
                   >
                     <div className="flex justify-between w-full">
                       <span className="font-bold text-[var(--color-text-primary)]">{m.name}</span>
                       <span className="text-xs font-mono text-[var(--color-text-secondary)]">PP {m.currentPp}/{m.pp}</span>
                     </div>
-                    <div className="text-[0.65rem] text-[var(--color-text-muted)] uppercase tracking-wider">
+                    <div className="text-[0.65rem] text-[var(--color-text-muted)] uppercase tracking-wider font-bold">
                       {m.type}
                     </div>
                   </button>
@@ -300,27 +343,25 @@ export default function Battle() {
             </div>
           )}
 
-          {(uiView === "switch" || phase === "force-switch") && (
+          {uiView === "switch" && phase !== "force-switch" && (
             <div className="flex flex-col h-full overflow-y-auto custom-scrollbar pr-2">
               <div className="flex justify-between items-center mb-2 sticky top-0 bg-[var(--color-bg-deep)] z-10 pb-1">
                 <span className="text-sm font-bold text-[var(--color-text-primary)]">
-                  {phase === "force-switch" ? "Choose replacement:" : "Switch to:"}
+                  Switch to:
                 </span>
-                {phase !== "force-switch" && (
-                  <button onClick={() => setUiView("main")} className="text-xs text-[var(--color-text-muted)] hover:text-white uppercase">Cancel</button>
-                )}
+                <button onClick={() => setUiView("main")} className="text-xs text-[var(--color-text-muted)] hover:text-white uppercase">Cancel</button>
               </div>
               <div className="flex flex-col gap-2">
-                {(phase === "force-switch" ? forceSwitchBench : me.bench).map((b) => (
+                {me.bench.map((b) => (
                   <button
                     key={b.benchIndex}
                     onClick={() => handleSwitch(b.benchIndex)}
                     disabled={b.currentHp <= 0}
                     className="flex items-center gap-3 p-2 bg-[var(--color-bg-panel)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] rounded disabled:opacity-50 transition-colors text-left"
                   >
-                    <img src={b.spriteUrl} alt={b.name} className="w-8 h-8 object-contain" />
+                    <img src={b.spriteUrl} alt={b.name} className="w-10 h-10 object-contain" />
                     <div className="flex-1">
-                      <div className="font-bold text-sm text-[var(--color-text-primary)]">{b.name}</div>
+                      <div className="font-bold text-[var(--color-text-primary)] text-sm">{b.name}</div>
                       <HpBar current={b.currentHp} max={b.maxHp} size="sm" showText={false} />
                     </div>
                     <div className="text-xs font-mono text-[var(--color-text-secondary)]">
@@ -349,12 +390,40 @@ export default function Battle() {
         </div>
       )}
 
+      {/* Opponent Reconnecting Modal */}
       {opponentReconnectingMsg && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-40 p-4">
-          <div className="glass-card p-6 max-w-sm w-full text-center space-y-4">
-            <div className="w-8 h-8 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin mx-auto"></div>
-            <h2 className="text-lg font-bold text-[var(--color-text-primary)]">{opponentReconnectingMsg}</h2>
-            <p className="text-[var(--color-text-secondary)] text-sm">Please do not leave the page.</p>
+        <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-card p-6 text-center max-w-sm w-full animate-fade-in border-[var(--color-warning)]">
+            <div className="text-[var(--color-warning)] mb-4 w-8 h-8 mx-auto animate-spin rounded-full border-2 border-[var(--color-warning)] border-t-transparent"></div>
+            <div className="font-bold text-lg mb-2">{opponentReconnectingMsg}</div>
+            <div className="text-sm text-[var(--color-text-muted)]">
+              The battle will resume automatically.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Force Switch Modal Drawer */}
+      {phase === "force-switch" && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4 animate-fade-in">
+          <div className="w-full max-w-xl bg-[var(--color-bg-deep)] border border-[var(--color-border)] rounded-t-xl p-4 sm:p-6 shadow-2xl animate-slide-up pb-10">
+            <div className="text-xl font-bold text-[var(--color-danger)] mb-4 text-center">Your Pokémon fainted! Choose replacement:</div>
+            <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
+              {forceSwitchBench.map((b) => (
+                <button
+                  key={b.benchIndex}
+                  onClick={() => handleSwitch(b.benchIndex)}
+                  disabled={b.currentHp <= 0}
+                  className="flex items-center gap-4 p-4 bg-[var(--color-bg-panel)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] rounded-lg disabled:opacity-50 transition-colors text-left"
+                >
+                  <img src={b.spriteUrl} alt={b.name} className="w-14 h-14 object-contain" />
+                  <div className="flex-1">
+                    <div className="font-bold text-[var(--color-text-primary)] text-lg mb-1">{b.name}</div>
+                    <HpBar current={b.currentHp} max={b.maxHp} size="md" />
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

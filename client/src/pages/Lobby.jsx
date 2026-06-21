@@ -11,6 +11,8 @@ export default function Lobby() {
   const [isWaiting, setIsWaiting] = useState(false);
   const [myCode, setMyCode] = useState(null);
   const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [vsData, setVsData] = useState(null);
 
   const [showWakeMessage, setShowWakeMessage] = useState(false);
 
@@ -54,9 +56,14 @@ export default function Lobby() {
 
     function handleBattleStart({ playerKey, state }) {
       sessionStorage.setItem("poke-room-code", state.myKey === "p1" ? state.code : undefined); // Will fix later, room doesn't emit code in state. Just save it when joining.
-      navigate(`/battle/${state.me.active.id || "live"}`, { 
-        state: { playerKey, initialBattleState: state } 
-      });
+      
+      // Show VS Screen hype
+      setVsData({ me: state.me, opponent: state.opponent });
+      setTimeout(() => {
+        navigate(`/battle/${state.me.active.id || "live"}`, { 
+          state: { playerKey, initialBattleState: state } 
+        });
+      }, 2500); // 2.5s hype delay
     }
 
     function handleError({ message }) {
@@ -180,9 +187,24 @@ export default function Lobby() {
             <div>
               <p className="text-[var(--color-text-secondary)] text-sm mb-1">Waiting for opponent...</p>
               <p className="text-[var(--color-text-primary)] text-sm">Room Code:</p>
-              <div className="font-mono text-4xl font-bold tracking-[0.2em] text-[var(--color-primary)] mt-2 bg-[var(--color-bg-panel)] py-3 px-6 rounded-xl border border-[var(--color-border)] shadow-inner">
-                {myCode}
-              </div>
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(myCode);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className="group relative block w-full mt-2 bg-[var(--color-bg-panel)] py-3 px-6 rounded-xl border border-[var(--color-border)] shadow-inner hover:border-[var(--color-primary)] transition-colors cursor-pointer text-center"
+              >
+                <div className="font-mono text-4xl font-bold tracking-[0.2em] text-[var(--color-primary)]">
+                  {myCode}
+                </div>
+                <div className={`absolute -top-8 left-1/2 -translate-x-1/2 bg-[var(--color-bg-deep)] border border-[var(--color-border)] text-xs px-2 py-1 rounded transition-opacity ${copied ? 'opacity-100' : 'opacity-0'}`}>
+                  Copied!
+                </div>
+                <div className="text-[10px] text-[var(--color-text-muted)] mt-1 uppercase tracking-widest group-hover:text-[var(--color-primary)] transition-colors">
+                  Tap to copy
+                </div>
+              </button>
             </div>
             <button 
               onClick={() => {
@@ -200,6 +222,38 @@ export default function Lobby() {
         )}
 
       </div>
+
+      {/* VS Screen Overlay */}
+      {vsData && (
+        <div className="fixed inset-0 z-50 bg-[var(--color-bg-deep)] flex flex-col items-center justify-center p-4 overflow-hidden">
+          {/* Animated Background Elements */}
+          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_center,_var(--color-primary)_0%,_transparent_70%)] animate-pulse-glow"></div>
+          
+          <div className="text-5xl font-black text-[var(--color-primary)] mb-12 tracking-widest animate-pulse drop-shadow-[0_0_15px_rgba(59,130,246,0.8)] z-10 italic">VS</div>
+          
+          <div className="flex w-full max-w-4xl justify-between items-center px-2 sm:px-12 z-10">
+            {/* Player 1 */}
+            <div className="flex flex-col items-center animate-slide-in-left">
+              <img src={vsData.me.active.spriteUrl} alt="You" className="w-32 h-32 sm:w-56 sm:h-56 object-contain drop-shadow-[0_0_20px_rgba(59,130,246,0.5)]" />
+              <div className="mt-6 font-bold text-2xl tracking-wide">{vsData.me.active.name}</div>
+              <div className="text-sm font-bold text-[var(--color-text-secondary)] uppercase tracking-widest mt-1">You</div>
+            </div>
+
+            {/* Lightning bolt or divider could go here */}
+
+            {/* Player 2 */}
+            <div className="flex flex-col items-center animate-slide-in-right">
+              <img src={vsData.opponent.active.spriteUrl} alt="Opponent" className="w-32 h-32 sm:w-56 sm:h-56 object-contain drop-shadow-[0_0_20px_rgba(239,68,68,0.5)]" />
+              <div className="mt-6 font-bold text-2xl tracking-wide">{vsData.opponent.active.name}</div>
+              <div className="text-sm font-bold text-[var(--color-danger)] uppercase tracking-widest mt-1">Opponent</div>
+            </div>
+          </div>
+          
+          <div className="absolute bottom-16 text-xl font-bold text-[var(--color-text-primary)] tracking-widest uppercase animate-pulse z-10">
+            Battle starting...
+          </div>
+        </div>
+      )}
     </div>
   );
 }
