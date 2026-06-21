@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 
@@ -17,9 +17,9 @@ export default function Lobby() {
   const [showWakeMessage, setShowWakeMessage] = useState(false);
 
   // Refs for VS Screen skip
-  const vsTimeoutRef = React.useRef(null);
-  const battleStateRef = React.useRef(null);
-  const battleKeyRef = React.useRef(null);
+  const vsTimeoutRef = useRef(null);
+  const battleStateRef = useRef(null);
+  const battleKeyRef = useRef(null);
 
   // If not connected after 2 seconds, show the wake message
   useEffect(() => {
