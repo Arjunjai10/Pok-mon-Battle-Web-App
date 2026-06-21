@@ -309,17 +309,27 @@ export default function TeamBuilder() {
               onChange={e => setSearch(e.target.value)}
               className="w-full px-3 py-1.5 rounded-lg bg-[var(--color-bg-deep)] border border-[var(--color-border)] text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-border-glow)] transition-colors"
             />
-            <select
-              id="type-filter"
-              value={typeFilter}
-              onChange={e => setTypeFilter(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg bg-[var(--color-bg-deep)] border border-[var(--color-border)] text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-border-glow)] transition-colors"
-            >
-              <option value="">All Types</option>
+            <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+              <button 
+                onClick={() => setTypeFilter("")}
+                className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${typeFilter === "" ? "bg-[var(--color-primary)] text-white" : "bg-[var(--color-bg-deep)] text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-bg-panel)]"}`}
+              >
+                All
+              </button>
               {allTypes.map(t => (
-                <option key={t} value={t}>{t}</option>
+                <button
+                  key={t}
+                  onClick={() => setTypeFilter(t)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap uppercase tracking-wider transition-colors border ${typeFilter === t ? "text-white" : "text-white/50 hover:text-white"}`}
+                  style={{ 
+                    backgroundColor: typeFilter === t ? `var(--color-type-${t.toLowerCase()})` : `color-mix(in srgb, var(--color-type-${t.toLowerCase()}) 30%, transparent)`,
+                    borderColor: `var(--color-type-${t.toLowerCase()})`
+                  }}
+                >
+                  {t}
+                </button>
               ))}
-            </select>
+            </div>
             <p className="text-[0.65rem] text-[var(--color-text-muted)] text-right">
               {filteredPokemon.length} Pokémon
             </p>
@@ -370,79 +380,51 @@ export default function TeamBuilder() {
           )}
         </main>
 
-        {/* ══ RIGHT: Team Roster (Desktop) ═════════════════════════════════════ */}
-        <aside className="hidden lg:flex flex-col w-60 flex-none border-l border-[var(--color-border)] bg-[var(--color-bg-card)]">
-          <div className="px-4 py-3 border-b border-[var(--color-border)]">
-            <h2 className="font-display font-bold text-sm text-[var(--color-text-primary)]">
-              Your Team
-            </h2>
-            <p className="text-[0.65rem] text-[var(--color-text-muted)] mt-0.5">
-              Click a slot to edit
-            </p>
-          </div>
-
-          <div className="scroll-panel flex-1 p-3 space-y-2">
-            {team.map((slot, idx) => (
-              <TeamSlot
-                key={idx}
-                index={idx}
-                slot={slot}
-                isActive={activePokemon?.id === slot?.pokemon.id}
-                onClick={() => slot && setActivePokemon(slot.pokemon)}
-                onRemove={() => slot && handleRemovePokemon(slot.pokemon.id)}
-                moveIndex={moveIndex}
-              />
-            ))}
-          </div>
-
-          {/* Validation errors */}
-          {validationErrors.length > 0 && (
-            <div className="p-3 border-t border-[var(--color-border)] space-y-1">
-              {validationErrors.map((e, i) => (
-                <p key={i} className="text-[0.65rem] text-[var(--color-danger)] flex items-start gap-1">
-                  <span>⚠</span><span>{e}</span>
-                </p>
-              ))}
-            </div>
-          )}
-
-          {canProceed && (
-            <div className="p-3 border-t border-[var(--color-border)]">
-              <p className="text-[0.65rem] text-[var(--color-success)] text-center">
-                ✓ Team is ready!
-              </p>
-              <button
-                id="proceed-btn-sidebar"
-                onClick={handleProceed}
-                className="mt-2 w-full py-2 rounded-lg bg-[var(--color-primary)] hover:bg-blue-400 text-white font-semibold text-sm transition-all hover:-translate-y-0.5 shadow-lg shadow-blue-500/30"
-              >
-                Go to Lobby →
-              </button>
-            </div>
-          )}
-        </aside>
+        {/* ══ RIGHT: Team Roster (Desktop) - REMOVED for unified bottom dock ═════════════════════════════════════ */}
       </div>
 
-      {/* ══ BOTTOM: Mobile Team Bar ══════════════════════════════════════════ */}
-      <div className="lg:hidden flex-none border-t border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2">
-        <div className="flex justify-between items-center mb-1.5">
-          <span className="text-xs font-bold text-[var(--color-text-primary)]">Your Team ({teamPokemonIds.size}/6)</span>
-          {canProceed && (
-            <button onClick={handleProceed} className="text-xs text-[var(--color-primary)] font-bold uppercase tracking-wider bg-[var(--color-primary)]/10 px-2 py-0.5 rounded border border-[var(--color-primary)]/30">
-              Ready →
-            </button>
-          )}
-        </div>
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {team.map((slot, idx) => (
+      {/* ══ BOTTOM: Persistent Team Dock ══════════════════════════════════════════ */}
+      <div className="flex-none border-t border-[var(--color-border)] bg-[var(--color-bg-deep)] px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.5)] z-20">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+          
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:block text-sm font-bold text-[var(--color-text-secondary)] uppercase tracking-wider">
+              Your Team
+              <div className="text-xs text-[var(--color-text-muted)] mt-0.5">({teamPokemonIds.size}/6)</div>
+            </div>
+            
+            <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
+              {team.map((slot, idx) => (
+                <button 
+                  key={idx} 
+                  onClick={() => slot && setActivePokemon(slot.pokemon)} 
+                  className={`w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0 border rounded-xl flex items-center justify-center transition-all ${slot ? 'bg-[var(--color-bg-panel)] hover:bg-[var(--color-bg-hover)] cursor-pointer hover:-translate-y-1' : 'bg-[var(--color-bg-card)] opacity-30 cursor-default'} ${activePokemon?.id === slot?.pokemon?.id ? 'border-[var(--color-primary)] shadow-[0_0_12px_rgba(59,130,246,0.6)] bg-blue-500/10' : 'border-[var(--color-border)]'}`}
+                >
+                   {slot ? (
+                     <img src={slot.pokemon.spriteUrl} alt={slot.pokemon.name} className="w-10 h-10 sm:w-12 sm:h-12 object-contain drop-shadow-md" />
+                   ) : (
+                     <div className="text-2xl font-bold text-[var(--color-text-muted)] opacity-30">{idx + 1}</div>
+                   )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col items-end gap-2 w-full sm:w-auto">
+            {validationErrors.length > 0 && (
+              <div className="text-[0.65rem] text-[var(--color-danger)] text-right hidden sm:block">
+                {validationErrors[0]}
+              </div>
+            )}
             <button 
-              key={idx} 
-              onClick={() => slot && setActivePokemon(slot.pokemon)} 
-              className={`w-12 h-12 flex-shrink-0 border rounded-lg flex items-center justify-center transition-colors ${slot ? 'bg-[var(--color-bg-panel)] hover:bg-[var(--color-bg-hover)]' : 'bg-[var(--color-bg-deep)] opacity-50'} ${activePokemon?.id === slot?.pokemon?.id ? 'border-[var(--color-primary)] shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'border-[var(--color-border)]'}`}
+              onClick={handleProceed}
+              disabled={!canProceed}
+              className={`w-full sm:w-auto px-8 py-3 rounded-xl font-bold uppercase tracking-wider transition-all shadow-lg ${canProceed ? 'bg-[var(--color-accent)] text-black hover:scale-105 shadow-[var(--color-accent)]/20' : 'bg-[var(--color-bg-panel)] text-[var(--color-text-muted)] cursor-not-allowed border border-[var(--color-border)]'}`}
             >
-               {slot && <img src={slot.pokemon.spriteUrl} alt={slot.pokemon.name} className="w-8 h-8 object-contain drop-shadow-md" />}
+              {canProceed ? "Ready for Battle →" : "Incomplete Team"}
             </button>
-          ))}
+          </div>
+          
         </div>
       </div>
     </div>
@@ -677,46 +659,40 @@ function MovePicker({ isOnTeam, activeMoves, filteredGroups, moveIndex, onToggle
 
   return (
     <div className="space-y-5">
-      {/* Progress indicator */}
-      <div className="flex items-center gap-3">
-        <div className="flex gap-1.5">
-          {Array.from({ length: MOVES_PER_MON }).map((_, i) => (
-            <div
-              key={i}
-              className="w-2 h-2 rounded-full transition-colors duration-200"
+      {/* Live Moveset Preview Card */}
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        {Array.from({ length: 4 }).map((_, i) => {
+          const mName = activeMoves[i];
+          const m = mName ? moveIndex.get(mName) : null;
+          return m ? (
+            <button
+              key={`preview-${i}`}
+              onClick={() => onToggleMove(mName)}
+              className="flex flex-col items-start justify-center px-3 py-2 rounded-lg border text-left transition-transform hover:scale-[1.02] active:scale-95 group relative overflow-hidden"
               style={{
-                backgroundColor: i < activeMoves.length
-                  ? "var(--color-primary)"
-                  : "var(--color-border)",
+                borderColor: `var(--color-type-${m.type.toLowerCase()})`,
+                backgroundColor: `color-mix(in srgb, var(--color-type-${m.type.toLowerCase()}) 15%, var(--color-bg-panel))`,
               }}
-            />
-          ))}
-        </div>
-        <span className="text-xs text-[var(--color-text-muted)]">
-          {movesFull ? "✓ 4 moves selected" : `${movesNeeded} more move${movesNeeded !== 1 ? "s" : ""} needed`}
-        </span>
+              title="Click to remove"
+            >
+              <div className="absolute inset-0 bg-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                 <span className="text-white font-bold text-xs uppercase tracking-widest drop-shadow-md">Remove</span>
+              </div>
+              <div className="flex justify-between w-full items-baseline group-hover:opacity-10 transition-opacity">
+                <span className="font-bold text-[var(--color-text-primary)] text-sm truncate">{formatMoveName(m.name)}</span>
+                <span className="text-[0.6rem] font-mono text-[var(--color-text-secondary)] ml-1 flex-shrink-0">PP {m.pp}/{m.pp}</span>
+              </div>
+              <div className="text-[0.65rem] text-[var(--color-text-muted)] uppercase tracking-wider font-bold group-hover:opacity-10 transition-opacity">
+                {m.type} • {m.power ? `PWR ${m.power}` : "STATUS"}
+              </div>
+            </button>
+          ) : (
+            <div key={`empty-${i}`} className="flex items-center justify-center px-3 py-2 rounded-lg border-2 border-dashed border-[var(--color-border)] bg-[var(--color-bg-deep)] opacity-50 h-[52px]">
+              <span className="text-[0.65rem] text-[var(--color-text-muted)] uppercase tracking-widest font-bold">Empty Slot</span>
+            </div>
+          );
+        })}
       </div>
-
-      {/* Currently selected moves (quick-view chips) */}
-      {activeMoves.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {activeMoves.map(mName => {
-            const m = moveIndex.get(mName);
-            if (!m) return null;
-            return (
-              <button
-                key={mName}
-                onClick={() => onToggleMove(mName)}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/40 text-xs font-medium text-[var(--color-primary)] hover:bg-[var(--color-danger)]/20 hover:border-[var(--color-danger)]/40 hover:text-[var(--color-danger)] transition-all group"
-                title="Click to remove"
-              >
-                <span className="capitalize">{formatMoveName(m.name)}</span>
-                <span className="group-hover:block hidden text-[0.6rem]">×</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       {/* Grouped move lists */}
       {filteredGroups.length === 0 ? (
