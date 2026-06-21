@@ -17,6 +17,7 @@ export default function Battle() {
   const [rematchWaiting, setRematchWaiting] = useState(false);
   const [floatingEvents, setFloatingEvents] = useState([]);
   const [lockedAction, setLockedAction] = useState(null);
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   // Removes a floating event after its animation finishes
   const removeFloatingEvent = useCallback((id) => {
@@ -77,6 +78,7 @@ export default function Battle() {
       setGameState(state);
       setOpponentReconnectingMsg(null);
       setModalMessage(null);
+      setIsReconnecting(false);
       if (message) {
         setLogEntries((prev) => [...prev, message]);
       }
@@ -106,6 +108,10 @@ export default function Battle() {
       }
     }
 
+    function handleDisconnect() {
+      setIsReconnecting(true);
+    }
+
     socket.on("action-received", handleActionReceived);
     socket.on("battle-start", handleBattleStart);
     socket.on("turn-result", handleTurnResult);
@@ -116,6 +122,7 @@ export default function Battle() {
     socket.on("battle-over", handleBattleOver);
     socket.on("rematch-waiting", handleRematchWaiting);
     socket.on("error", handleError);
+    socket.on("disconnect", handleDisconnect);
 
     return () => {
       socket.off("action-received", handleActionReceived);
@@ -128,20 +135,20 @@ export default function Battle() {
       socket.off("battle-over", handleBattleOver);
       socket.off("rematch-waiting", handleRematchWaiting);
       socket.off("error", handleError);
+      socket.off("disconnect", handleDisconnect);
     };
   }, [socket, gameState, navigate]);
 
   // Auto-reconnect flow
   useEffect(() => {
     if (!isConnected || !socket) return;
-    if (location.state?.initialBattleState) return; // fresh battle from Lobby
     const code = sessionStorage.getItem("poke-room-code");
     const sessionId = sessionStorage.getItem("poke-session-id");
     const savedTeam = sessionStorage.getItem("poke-team-final");
     if (code && sessionId && savedTeam) {
       socket.emit("join-room", { code, sessionId, team: JSON.parse(savedTeam) });
     }
-  }, [isConnected, socket, location.state]);
+  }, [isConnected, socket]);
 
   if (!gameState) return null;
 
