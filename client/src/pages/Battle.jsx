@@ -100,7 +100,10 @@ export default function Battle() {
     }
 
     function handleError({ message }) {
-      alert(`Error: ${message}`);
+      console.error(`Battle Error: ${message}`);
+      if (message.includes("Room not found")) {
+        navigate("/lobby");
+      }
     }
 
     socket.on("action-received", handleActionReceived);
@@ -130,15 +133,15 @@ export default function Battle() {
 
   // Auto-reconnect flow
   useEffect(() => {
-    if (isConnected && socket && gameState) {
-      const code = sessionStorage.getItem("poke-room-code");
-      const sessionId = sessionStorage.getItem("poke-session-id");
-      const savedTeam = sessionStorage.getItem("poke-team-final");
-      if (code && sessionId && savedTeam) {
-        socket.emit("join-room", { code, sessionId, team: JSON.parse(savedTeam) });
-      }
+    if (!isConnected || !socket) return;
+    if (location.state?.initialBattleState) return; // fresh battle from Lobby
+    const code = sessionStorage.getItem("poke-room-code");
+    const sessionId = sessionStorage.getItem("poke-session-id");
+    const savedTeam = sessionStorage.getItem("poke-team-final");
+    if (code && sessionId && savedTeam) {
+      socket.emit("join-room", { code, sessionId, team: JSON.parse(savedTeam) });
     }
-  }, [isConnected, socket]);
+  }, [isConnected, socket, location.state]);
 
   if (!gameState) return null;
 
