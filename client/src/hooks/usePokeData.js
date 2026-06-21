@@ -28,10 +28,11 @@ export function usePokeData() {
         // In dev: Vite serves files from the project root; we proxy /data to server.
         // In Phase 3 standalone: fetch from relative paths (Vite dev server must
         // expose them, or use the public/ symlink). We use dynamic import for now.
+        const backendUrl = import.meta.env.VITE_SERVER_URL || "";
         const [pokemonMod, movesMod, itemsMod] = await Promise.all([
-          fetch("/data/pokemon.json").then(r => { if (!r.ok) throw new Error("Failed to load pokemon.json"); return r.json(); }),
-          fetch("/data/moves.json").then(r => { if (!r.ok) throw new Error("Failed to load moves.json"); return r.json(); }),
-          fetch("/data/items.json").then(r => { if (!r.ok) throw new Error("Failed to load items.json"); return r.json(); }),
+          fetch(`${backendUrl}/data/pokemon.json`).then(r => { if (!r.ok) throw new Error("Failed to load pokemon.json"); return r.json(); }),
+          fetch(`${backendUrl}/data/moves.json`).then(r => { if (!r.ok) throw new Error("Failed to load moves.json"); return r.json(); }),
+          fetch(`${backendUrl}/data/items.json`).then(r => { if (!r.ok) throw new Error("Failed to load items.json"); return r.json(); }),
         ]);
 
         const moveIndex = new Map(movesMod.map(m => [m.name, m]));
