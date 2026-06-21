@@ -12,6 +12,7 @@
 const express = require("express");
 const path    = require("path");
 const http    = require("http");
+const cors    = require("cors");
 const { Server } = require("socket.io");
 const rooms   = require("./rooms/roomManager");
 
@@ -34,15 +35,8 @@ const PORT = process.env.PORT || 3001;
 
 // ── HTTP routes ────────────────────────────────────────────────────────────────
 
-// Serve CORS headers for HTTP routes
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
-    res.header("Access-Control-Allow-Origin", origin);
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  }
-  next();
-});
+// Serve CORS headers for all HTTP routes
+app.use(cors({ origin: allowedOrigins }));
 
 app.use("/data", express.static(path.join(__dirname, "data")));
 app.get("/api/health", (_req, res) => res.json({ status: "ok", phase: 5 }));
