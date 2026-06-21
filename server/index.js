@@ -1,32 +1,210 @@
 /**
- * index.js — Express + Socket.io server (Phase 3: data serving only)
- * Phase 4 will add Socket.io rooms and battle event handlers.
+ * index.js — Express + Socket.io server (Phase 4)
+ *
+ * Serves:
+ *   /data/*    → static JSON (Pokémon, moves, items)
+ *   /api/*     → health check
+ *   Socket.io  → real-time battle rooms
  */
+
 "use strict";
 
 const express = require("express");
-const path = require("path");
-const http = require("http");
+const path    = require("path");
+const http    = require("http");
+const { Server } = require("socket.io");
+const rooms   = require("./rooms/roomManager");
 
-const app = express();
+const app    = express();
 const server = http.createServer(app);
+const io     = new Server(server, {
+  cors: {
+    origin:  ["http://localhost:5173", "http://127.0.0.1:5173"],
+    methods: ["GET", "POST"],
+  },
+});
 
 const PORT = process.env.PORT || 3001;
 
-// ── Serve static JSON data files ───────────────────────────────────────────
-// The client fetches /data/pokemon.json etc. — these are our cached PokeAPI files.
-app.use("/data", express.static(path.join(__dirname, "data")));
+// ── HTTP routes ────────────────────────────────────────────────────────────────
 
-// ── Health check ───────────────────────────────────────────────────────────
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", phase: 3 });
+app.use("/data", express.static(path.join(__dirname, "data")));
+app.get("/api/health", (_req, res) => res.json({ status: "ok", phase: 4 }));
+
+// ── Socket.io ──────────────────────────────────────────────────────────────────
+
+io.on("connection", (socket) => {
+  log(`connected  ${short(socket.id)}`);
+
+  // ── Create Room ─────────────────────────────────────────────────────────────
+  socket.on("create-room", ({ team }) => {
+    try {
+      if (!validTeam(team)) {
+        return socket.emit("error", { message: "Invalid team: must have exactly 6 Pokémon with 4 moves each." });
+      }
+      const code = rooms.createRoom(socket.id, team);
+      socket.join(code);
+      socket.emit("room-created", { code });
+      log(`room created  ${code}  by ${short(socket.id)}`);
+    } catch (err) {
+      console.error("[create-room]", err);
+      socket.emit("error", { message: "Failed to create room. Please try again." });
+    }
+  });
+
+  // ── Join Room ───────────────────────────────────────────────────────────────
+  socket.on("join-room", ({ code, team }) => {
+    try {
+      if (!validTeam(team)) {
+        return socket.emit("error", { message: "Invalid team: must have exactly 6 Pokémon with 4 moves each." });
+      }
+
+      const result = rooms.joinRoom(socket.id, code, team);
+      if (!result.success) {
+        return socket.emit("error", { message: result.error });
+      }
+
+      const { room } = result;
+      socket.join(room.code);
+      log(`room joined  ${room.code}  p2=${short(socket.id)}`);
+
+      // Send initial battle state to both players simultaneously
+      const p1SocketId = room.players.p1.socketId;
+      io.to(p1SocketId).emit("battle-start", {
+        playerKey: "p1",
+        state: rooms.buildClientState(room, "p1"),
+      });
+      socket.emit("battle-start", {
+        playerKey: "p2",
+        state: rooms.buildClientState(room, "p2"),
+      });
+    } catch (err) {
+      console.error("[join-room]", err);
+      socket.emit("error", { message: "Failed to join room. Please try again." });
+    }
+  });
+
+  // ── Submit Action (move or voluntary switch) ────────────────────────────────
+  socket.on("submit-action", ({ type, move, switchTo }) => {
+    try {
+      const info = rooms.getRoomBySocket(socket.id);
+      if (!info) return socket.emit("error", { message: "You are not in a room." });
+
+      const { code, playerKey, room } = info;
+
+      // Validate action shape
+      const action = buildAction(type, move, switchTo);
+      if (!action) return socket.emit("error", { message: `Unknown action type: "${type}".` });
+
+      const result = rooms.submitAction(code, playerKey, action);
+      if (!result.success) return socket.emit("error", { message: result.error });
+
+      // Acknowledge immediately — client transitions to "waiting" state
+      socket.emit("action-received");
+      log(`action  ${code}  ${playerKey}  ${type}${move ? `:${move.name}` : switchTo !== undefined ? `:switch→${switchTo}` : ""}`);
+
+      if (result.bothReady) {
+        // Both submitted — resolve turn
+        const resolved = rooms.resolveTurn(code);
+        if (!resolved) return;
+
+        const { log: turnLog, forceSwitches, winner } = resolved;
+        log(`turn resolved  ${code}  turn=${room.battleState?.turn}  winner=${winner ?? "none"}  forceSwitches=[${[...forceSwitches].join(",")}]`);
+
+        // Send personalised turn-result to each player
+        broadcastPlayerStates(room, "turn-result", { log: turnLog });
+
+        if (winner) {
+          // battle-over is already embedded in each player's state.phase
+          // but we also emit a dedicated event for clean UX handling
+          io.to(code).emit("battle-over", { winner, log: turnLog });
+        }
+      }
+    } catch (err) {
+      console.error("[submit-action]", err);
+      socket.emit("error", { message: "Failed to submit action." });
+    }
+  });
+
+  // ── Submit Forced Switch (after active Pokémon faints) ──────────────────────
+  socket.on("submit-force-switch", ({ switchTo }) => {
+    try {
+      const info = rooms.getRoomBySocket(socket.id);
+      if (!info) return socket.emit("error", { message: "You are not in a room." });
+
+      const { code, playerKey, room } = info;
+      const result = rooms.submitForceSwitch(code, playerKey, switchTo);
+
+      if (!result.success) return socket.emit("error", { message: result.error });
+
+      log(`force-switch  ${code}  ${playerKey}  slot=${switchTo}  allDone=${result.allDone}`);
+
+      // Notify both players of the switch result
+      broadcastPlayerStates(room, "force-switch-result", { log: result.log });
+    } catch (err) {
+      console.error("[submit-force-switch]", err);
+      socket.emit("error", { message: "Failed to switch Pokémon." });
+    }
+  });
+
+  // ── Disconnect ───────────────────────────────────────────────────────────────
+  socket.on("disconnect", (reason) => {
+    log(`disconnected  ${short(socket.id)}  reason=${reason}`);
+    const info = rooms.removeSocket(socket.id);
+    if (info?.opponentSocketId) {
+      io.to(info.opponentSocketId).emit("opponent-disconnected", {
+        message: "Your opponent disconnected. The battle has ended.",
+      });
+      log(`notified opponent  ${short(info.opponentSocketId)}  of disconnect from room ${info.code}`);
+    }
+  });
+
+  // ── Helpers (per-connection scope) ───────────────────────────────────────────
+
+  /**
+   * Emit a personalised event payload to each player in a room.
+   * Each player gets `buildClientState` called for their key so they
+   * never see opponent's moves or incorrect phase.
+   */
+  function broadcastPlayerStates(room, event, extra = {}) {
+    for (const key of ["p1", "p2"]) {
+      const sid = room.players[key]?.socketId;
+      if (!sid) continue;
+      const state = rooms.buildClientState(room, key);
+      io.to(sid).emit(event, { state, ...extra });
+    }
+  }
 });
 
-// ── Start server ───────────────────────────────────────────────────────────
+// ── Validation helpers ─────────────────────────────────────────────────────────
+
+function validTeam(team) {
+  if (!Array.isArray(team) || team.length !== 6) return false;
+  return team.every(
+    (slot) =>
+      slot?.pokemon?.id &&
+      Array.isArray(slot.moves) &&
+      slot.moves.length === 4
+  );
+}
+
+function buildAction(type, move, switchTo) {
+  if (type === "move" && move) return { type: "move", move };
+  if (type === "switch" && switchTo !== undefined) return { type: "switch", switchTo };
+  return null;
+}
+
+// ── Logging helpers ───────────────────────────────────────────────────────────
+
+function short(id) { return id?.slice(0, 6) ?? "?"; }
+function log(msg)  { console.log(`[${new Date().toISOString().slice(11, 19)}] ${msg}`); }
+
+// ── Start ──────────────────────────────────────────────────────────────────────
+
 server.listen(PORT, () => {
-  console.log(`\n🚀 Pokémon Battle server running on http://localhost:${PORT}`);
-  console.log(`   Serving /data/* from ${path.join(__dirname, "data")}`);
-  console.log(`   Phase 4: Socket.io rooms will be added here\n`);
+  console.log(`\n🚀 Pokémon Battle server  →  http://localhost:${PORT}`);
+  console.log(`   /data/*   — static JSON`);
+  console.log(`   Socket.io — battle rooms\n`);
 });
 
 module.exports = { app, server };
