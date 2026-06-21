@@ -60,8 +60,6 @@ export default function Lobby() {
     }
 
     function handleBattleStart({ playerKey, state }) {
-      sessionStorage.setItem("poke-room-code", state.myKey === "p1" ? state.code : undefined); // Will fix later, room doesn't emit code in state. Just save it when joining.
-      
       battleStateRef.current = state;
       battleKeyRef.current = playerKey;
       setVsData({ me: state.me, opponent: state.opponent });
