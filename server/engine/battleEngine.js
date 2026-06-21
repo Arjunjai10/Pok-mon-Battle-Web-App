@@ -43,6 +43,29 @@ const SPECIAL_TYPES = new Set([
   "Dragon",
 ]);
 
+const HIGH_CRIT_MOVES = new Set(["crabhammer", "slash", "karate-chop", "razor-leaf"]);
+
+// Moves that alter stat stages
+const STAT_STAGE_MOVES = {
+  "growl":        [{ target: "defender", stat: "attack", stages: -1 }],
+  "tail-whip":    [{ target: "defender", stat: "defense", stages: -1 }],
+  "leer":         [{ target: "defender", stat: "defense", stages: -1 }],
+  "string-shot":  [{ target: "defender", stat: "speed", stages: -1 }],
+  "sand-attack":  [{ target: "defender", stat: "accuracy", stages: -1 }],
+  "swords-dance": [{ target: "attacker", stat: "attack", stages: 2 }],
+  "agility":      [{ target: "attacker", stat: "speed", stages: 2 }],
+  "amnesia":      [{ target: "attacker", stat: "specialAttack", stages: 2 }, { target: "attacker", stat: "specialDefense", stages: 2 }],
+  "barrier":      [{ target: "attacker", stat: "defense", stages: 2 }],
+  "acid-armor":   [{ target: "attacker", stat: "defense", stages: 2 }],
+  "harden":       [{ target: "attacker", stat: "defense", stages: 1 }],
+  "defense-curl": [{ target: "attacker", stat: "defense", stages: 1 }],
+  "growth":       [{ target: "attacker", stat: "specialAttack", stages: 1 }, { target: "attacker", stat: "specialDefense", stages: 1 }],
+  "meditate":     [{ target: "attacker", stat: "attack", stages: 1 }],
+  "sharpen":      [{ target: "attacker", stat: "attack", stages: 1 }],
+  "double-team":  [{ target: "attacker", stat: "evasion", stages: 1 }],
+  "minimize":     [{ target: "attacker", stat: "evasion", stages: 1 }]
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -180,7 +203,8 @@ function calculateDamage(attacker, defender, move, opts = {}) {
   // Moves with no power (status moves) deal 0 damage
   if (!move.power || move.power === 0) return 0;
 
-  const level = attacker.level || 100;
+  const isCrit = opts.isCrit === true;
+  const level = isCrit ? (attacker.level || 100) * 2 : (attacker.level || 100);
 
   // [GEN1] Determine A and D by move type, not move category
   const special = isSpecialMove(move.type);
@@ -426,11 +450,27 @@ function executeMove(attacker, defender, move, log, events, targetKey, opts = {}
     return { attacker: atk, defender: def, log: entries, events: newEvents };
   }
 
+  // Crit Check
+  let isCrit = false;
+  if (move.power > 0) {
+    // Gen 1 Crit rate is baseSpeed / 512. High crit moves are baseSpeed / 64
+    // We approximate base speed with currentStats.speed (ignoring stat modifiers for this chance calculation for simplicity)
+    const baseSpeed = atk.currentStats.speed || 80;
+    const critChance = HIGH_CRIT_MOVES.has(move.name) ? Math.min(0.99, baseSpeed / 64) : Math.min(0.99, baseSpeed / 512);
+    if ((opts.critRoll !== undefined ? opts.critRoll : Math.random()) < critChance) {
+      isCrit = true;
+    }
+  }
+
   // Damage
-  const damage = calculateDamage(atk, def, move, opts);
+  const damage = calculateDamage(atk, def, move, { ...opts, isCrit });
 
   if (damage > 0) {
     def = { ...def, currentHp: Math.max(0, def.currentHp - damage) };
+
+    if (isCrit) {
+      entries.push(`A critical hit!`);
+    }
 
     const typeMultiplier = getTypeEffectiveness(move.type, def.types);
     if (typeMultiplier >= 2) {
@@ -448,7 +488,7 @@ function executeMove(attacker, defender, move, log, events, targetKey, opts = {}
       targetKey: targetKey,
       amount: damage,
       effectiveness: typeMultiplier,
-      isCrit: false // [GEN1] v1 scope doesn't include crits, but good for structure
+      isCrit: isCrit
     });
 
     if (def.currentHp <= 0) {
@@ -462,6 +502,36 @@ function executeMove(attacker, defender, move, log, events, targetKey, opts = {}
     const result = applyStatus(def, move.statusEffect);
     def = result.target;
     entries.push(result.log);
+  }
+
+  // Stat stage modifying moves
+  if (STAT_STAGE_MOVES[move.name] && def.currentHp > 0) {
+    const changes = STAT_STAGE_MOVES[move.name];
+    changes.forEach(({ target, stat, stages }) => {
+      let t = target === "attacker" ? atk : def;
+      
+      // Initialize if missing
+      if (!t.statStages) {
+        t.statStages = { attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0, accuracy: 0, evasion: 0 };
+      }
+
+      const oldStage = t.statStages[stat] || 0;
+      let newStage = Math.max(-6, Math.min(6, oldStage + stages));
+      t.statStages[stat] = newStage;
+
+      // Formatting name (e.g. "specialAttack" -> "Special Attack")
+      let statDisplay = stat.charAt(0).toUpperCase() + stat.slice(1);
+      if (stat === "specialAttack") statDisplay = "Special Attack";
+      if (stat === "specialDefense") statDisplay = "Special Defense";
+
+      if (newStage === oldStage) {
+        entries.push(`${t.name}'s ${statDisplay} won't go any ${stages > 0 ? "higher" : "lower"}!`);
+      } else {
+        const adverb = Math.abs(stages) > 1 ? "sharply " : "";
+        const verb = stages > 0 ? "rose!" : "fell!";
+        entries.push(`${t.name}'s ${statDisplay} ${adverb}${verb}`);
+      }
+    });
   }
 
   return { attacker: atk, defender: def, log: entries, events: newEvents };

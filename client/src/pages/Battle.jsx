@@ -191,6 +191,29 @@ export default function Battle() {
     );
   };
 
+  const renderStatStages = (stages) => {
+    if (!stages) return null;
+    const icons = {
+      attack: "⚔️", defense: "🛡️", specialAttack: "🔮", specialDefense: "🔰", speed: "👟", accuracy: "🎯", evasion: "💨"
+    };
+    
+    return (
+      <div className="flex gap-1 flex-wrap mt-1">
+        {Object.entries(stages).map(([stat, val]) => {
+          if (val === 0) return null;
+          const isPos = val > 0;
+          const color = isPos ? "text-green-500" : "text-red-400";
+          const arrow = isPos ? "↑" : "↓";
+          return (
+            <div key={stat} title={`${stat}: ${val}`} className={`text-[9px] font-bold ${color} bg-[var(--color-bg-deep)] px-1 rounded border border-[var(--color-border)] shadow-sm flex items-center`}>
+              {icons[stat] || ""} {arrow}{Math.abs(val)}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const FloatingDamage = ({ event }) => {
     const [visible, setVisible] = useState(false);
 
@@ -252,6 +275,7 @@ export default function Battle() {
             <div className="text-[10px] sm:text-xs font-mono text-[var(--color-text-muted)]">Lv.100</div>
           </div>
           <HpBar current={p.currentHp} max={p.maxHp} />
+          {renderStatStages(p.statStages)}
         </div>
       </div>
     );
