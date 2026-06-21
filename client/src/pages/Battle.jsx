@@ -7,7 +7,7 @@ import BattleLog from "../components/BattleLog";
 export default function Battle() {
   const navigate = useNavigate();
   const location = useLocation();
-  const socket = useSocket();
+  const { socket } = useSocket();
 
   const [gameState, setGameState] = useState(location.state?.initialBattleState || null);
   const [logEntries, setLogEntries] = useState(["Battle started!"]);

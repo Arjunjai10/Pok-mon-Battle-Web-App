@@ -17,9 +17,15 @@ const rooms   = require("./rooms/roomManager");
 
 const app    = express();
 const server = http.createServer(app);
+
+// For Render / production deployment
+const allowedOrigins = process.env.CORS_ORIGIN 
+  ? process.env.CORS_ORIGIN.split(",") 
+  : ["http://localhost:5173", "http://127.0.0.1:5173"];
+
 const io     = new Server(server, {
   cors: {
-    origin:  ["http://localhost:5173", "http://127.0.0.1:5173"],
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
   },
 });
@@ -28,8 +34,18 @@ const PORT = process.env.PORT || 3001;
 
 // ── HTTP routes ────────────────────────────────────────────────────────────────
 
+// Serve CORS headers for HTTP routes
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  }
+  next();
+});
+
 app.use("/data", express.static(path.join(__dirname, "data")));
-app.get("/api/health", (_req, res) => res.json({ status: "ok", phase: 4 }));
+app.get("/api/health", (_req, res) => res.json({ status: "ok", phase: 5 }));
 
 // ── Socket.io ──────────────────────────────────────────────────────────────────
 
