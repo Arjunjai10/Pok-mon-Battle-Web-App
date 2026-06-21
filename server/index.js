@@ -22,7 +22,7 @@ const server = http.createServer(app);
 // For Render / production deployment
 const allowedOrigins = process.env.CORS_ORIGIN 
   ? process.env.CORS_ORIGIN.split(",") 
-  : ["http://localhost:5173", "http://127.0.0.1:5173"];
+  : ["http://localhost:5173", "http://127.0.0.1:5173", "https://pok-mon-battle-web-app.vercel.app"];
 
 const io     = new Server(server, {
   cors: {
