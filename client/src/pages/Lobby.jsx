@@ -34,6 +34,11 @@ export default function Lobby() {
       return;
     }
     setTeam(JSON.parse(saved));
+    
+    // Ensure we have a session ID
+    if (!sessionStorage.getItem("poke-session-id")) {
+      sessionStorage.setItem("poke-session-id", crypto.randomUUID());
+    }
   }, [navigate]);
 
   // Socket event listeners
@@ -44,12 +49,11 @@ export default function Lobby() {
       setMyCode(code);
       setIsWaiting(true);
       setError("");
+      sessionStorage.setItem("poke-room-code", code); // Save room code for reconnects
     }
 
     function handleBattleStart({ playerKey, state }) {
-      // Store the playerKey and initial state in sessionStorage (optional) 
-      // or just navigate and let the Battle component listen for state updates.
-      // We will pass them in router state for immediate access
+      sessionStorage.setItem("poke-room-code", state.myKey === "p1" ? state.code : undefined); // Will fix later, room doesn't emit code in state. Just save it when joining.
       navigate(`/battle/${state.me.active.id || "live"}`, { 
         state: { playerKey, initialBattleState: state } 
       });
@@ -73,13 +77,17 @@ export default function Lobby() {
 
   const handleCreateRoom = () => {
     if (!socket || !team) return;
-    socket.emit("create-room", { team });
+    const sessionId = sessionStorage.getItem("poke-session-id");
+    socket.emit("create-room", { team, sessionId });
   };
 
   const handleJoinRoom = (e) => {
     e.preventDefault();
     if (!socket || !team || !joinCode.trim()) return;
-    socket.emit("join-room", { code: joinCode.trim(), team });
+    const sessionId = sessionStorage.getItem("poke-session-id");
+    const code = joinCode.trim();
+    sessionStorage.setItem("poke-room-code", code);
+    socket.emit("join-room", { code, team, sessionId });
   };
 
   if (!team) return null;

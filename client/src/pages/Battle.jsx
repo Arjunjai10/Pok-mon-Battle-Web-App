@@ -7,18 +7,20 @@ import BattleLog from "../components/BattleLog";
 export default function Battle() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { socket } = useSocket();
+  const { socket, isConnected } = useSocket();
 
   const [gameState, setGameState] = useState(location.state?.initialBattleState || null);
   const [logEntries, setLogEntries] = useState(["Battle started!"]);
   const [uiView, setUiView] = useState("main"); // "main" | "fight" | "switch"
   const [modalMessage, setModalMessage] = useState(null);
+  const [opponentReconnectingMsg, setOpponentReconnectingMsg] = useState(null);
 
   useEffect(() => {
-    if (!gameState || !socket) {
+    if (!gameState) {
       navigate("/");
       return;
     }
+    if (!socket) return;
 
     function handleActionReceived() {
       // Local optimistic update — Phase 4 says the server state will soon catch up
@@ -42,7 +44,21 @@ export default function Battle() {
       setUiView("main");
     }
 
+    function handleOpponentReconnecting({ message }) {
+      setOpponentReconnectingMsg(message);
+    }
+
+    function handleBattleReconnected({ state, message }) {
+      setGameState(state);
+      setOpponentReconnectingMsg(null);
+      setModalMessage(null);
+      if (message) {
+        setLogEntries((prev) => [...prev, message]);
+      }
+    }
+
     function handleOpponentDisconnected({ message }) {
+      setOpponentReconnectingMsg(null);
       setModalMessage(message);
     }
 
@@ -60,6 +76,8 @@ export default function Battle() {
     socket.on("action-received", handleActionReceived);
     socket.on("turn-result", handleTurnResult);
     socket.on("force-switch-result", handleForceSwitchResult);
+    socket.on("opponent-reconnecting", handleOpponentReconnecting);
+    socket.on("battle-reconnected", handleBattleReconnected);
     socket.on("opponent-disconnected", handleOpponentDisconnected);
     socket.on("battle-over", handleBattleOver);
     socket.on("error", handleError);
@@ -68,11 +86,25 @@ export default function Battle() {
       socket.off("action-received", handleActionReceived);
       socket.off("turn-result", handleTurnResult);
       socket.off("force-switch-result", handleForceSwitchResult);
+      socket.off("opponent-reconnecting", handleOpponentReconnecting);
+      socket.off("battle-reconnected", handleBattleReconnected);
       socket.off("opponent-disconnected", handleOpponentDisconnected);
       socket.off("battle-over", handleBattleOver);
       socket.off("error", handleError);
     };
   }, [socket, gameState, navigate]);
+
+  // Auto-reconnect flow
+  useEffect(() => {
+    if (isConnected && socket && gameState) {
+      const code = sessionStorage.getItem("poke-room-code");
+      const sessionId = sessionStorage.getItem("poke-session-id");
+      const savedTeam = sessionStorage.getItem("poke-team-final");
+      if (code && sessionId && savedTeam) {
+        socket.emit("join-room", { code, sessionId, team: JSON.parse(savedTeam) });
+      }
+    }
+  }, [isConnected, socket]);
 
   if (!gameState) return null;
 
@@ -283,7 +315,24 @@ export default function Battle() {
 
       </div>
 
-      {/* Disconnect Modal */}
+      {/* Disconnect / Reconnect Modals */}
+      {!isConnected && !modalMessage && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-yellow-500/90 text-yellow-950 px-6 py-2 rounded-full font-bold shadow-lg z-50 flex items-center gap-2 animate-bounce">
+          <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+          Connection lost. Reconnecting...
+        </div>
+      )}
+
+      {opponentReconnectingMsg && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-40 p-4">
+          <div className="glass-card p-6 max-w-sm w-full text-center space-y-4">
+            <div className="w-8 h-8 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <h2 className="text-lg font-bold text-[var(--color-text-primary)]">{opponentReconnectingMsg}</h2>
+            <p className="text-[var(--color-text-secondary)] text-sm">Please do not leave the page.</p>
+          </div>
+        </div>
+      )}
+
       {modalMessage && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="glass-card p-8 max-w-sm w-full text-center space-y-6">

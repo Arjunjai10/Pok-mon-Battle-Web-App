@@ -47,12 +47,12 @@ io.on("connection", (socket) => {
   log(`connected  ${short(socket.id)}`);
 
   // ── Create Room ─────────────────────────────────────────────────────────────
-  socket.on("create-room", ({ team }) => {
+  socket.on("create-room", ({ team, sessionId }) => {
     try {
       if (!validTeam(team)) {
         return socket.emit("error", { message: "Invalid team: must have exactly 6 Pokémon with 4 moves each." });
       }
-      const code = rooms.createRoom(socket.id, team);
+      const code = rooms.createRoom(socket.id, team, sessionId);
       socket.join(code);
       socket.emit("room-created", { code });
       log(`room created  ${code}  by ${short(socket.id)}`);
@@ -63,19 +63,27 @@ io.on("connection", (socket) => {
   });
 
   // ── Join Room ───────────────────────────────────────────────────────────────
-  socket.on("join-room", ({ code, team }) => {
+  socket.on("join-room", ({ code, team, sessionId }) => {
     try {
       if (!validTeam(team)) {
         return socket.emit("error", { message: "Invalid team: must have exactly 6 Pokémon with 4 moves each." });
       }
 
-      const result = rooms.joinRoom(socket.id, code, team);
+      const result = rooms.joinRoom(socket.id, code, team, sessionId);
       if (!result.success) {
         return socket.emit("error", { message: result.error });
       }
 
-      const { room } = result;
+      const { room, reconnected, playerKey } = result;
       socket.join(room.code);
+      
+      if (reconnected) {
+        log(`room reconnected  ${room.code}  ${playerKey}=${short(socket.id)}`);
+        // Tell everyone in the room (including the reconnected player) that the battle is back on
+        broadcastPlayerStates(room, "battle-reconnected", { message: "Player reconnected!" });
+        return;
+      }
+
       log(`room joined  ${room.code}  p2=${short(socket.id)}`);
 
       // Send initial battle state to both players simultaneously
@@ -160,12 +168,23 @@ io.on("connection", (socket) => {
   // ── Disconnect ───────────────────────────────────────────────────────────────
   socket.on("disconnect", (reason) => {
     log(`disconnected  ${short(socket.id)}  reason=${reason}`);
-    const info = rooms.removeSocket(socket.id);
+    
+    const info = rooms.removeSocket(socket.id, ({ opponentSocketId, code }) => {
+      // This callback fires if the 90s grace timer expires
+      if (opponentSocketId) {
+        io.to(opponentSocketId).emit("opponent-disconnected", {
+          message: "Your opponent disconnected permanently. The battle has ended.",
+        });
+        log(`notified opponent  ${short(opponentSocketId)}  of PERMANENT disconnect from room ${code}`);
+      }
+    });
+
     if (info?.opponentSocketId) {
-      io.to(info.opponentSocketId).emit("opponent-disconnected", {
-        message: "Your opponent disconnected. The battle has ended.",
+      // Immediately tell the opponent about the grace period
+      io.to(info.opponentSocketId).emit("opponent-reconnecting", {
+        message: "Opponent reconnecting... (90s)",
       });
-      log(`notified opponent  ${short(info.opponentSocketId)}  of disconnect from room ${info.code}`);
+      log(`notified opponent  ${short(info.opponentSocketId)}  of GRACE PERIOD for room ${info.code}`);
     }
   });
 

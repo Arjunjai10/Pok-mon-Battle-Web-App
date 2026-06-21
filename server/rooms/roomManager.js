@@ -68,17 +68,18 @@ class RoomManager {
   /**
    * Create a new room. Returns the room code.
    */
-  createRoom(socketId, rawTeam) {
+  createRoom(socketId, rawTeam, sessionId) {
     const code = this._uniqueCode();
     this.rooms.set(code, {
       code,
       phase: "waiting-for-players",
       players: {
-        p1: { socketId, rawTeam, pendingAction: null },
+        p1: { socketId, rawTeam, pendingAction: null, sessionId },
         p2: null,
       },
       battleState: null,
       pendingForceSwitches: new Set(),
+      disconnectTimers: { p1: null, p2: null },
     });
     this.socketToRoom.set(socketId, { code, playerKey: "p1" });
     return code;
@@ -86,19 +87,39 @@ class RoomManager {
 
   /**
    * Join an existing room.
-   * Returns { success, playerKey?, room?, error? }
+   * Returns { success, playerKey?, room?, error?, reconnected? }
    */
-  joinRoom(socketId, code, rawTeam) {
+  joinRoom(socketId, code, rawTeam, sessionId) {
     const upperCode = (code || "").toUpperCase().trim();
     const room = this.rooms.get(upperCode);
 
-    if (!room)                          return { success: false, error: "Room not found — double-check the code." };
-    if (room.players.p2 !== null)       return { success: false, error: "That room is already full." };
-    if (room.players.p1.socketId === socketId)
-      return { success: false, error: "You cannot join your own room." };
+    if (!room) return { success: false, error: "Room not found — double-check the code." };
+    
+    // Check for reconnect
+    if (room.players.p1 && room.players.p1.sessionId === sessionId) {
+      if (room.disconnectTimers.p1) {
+        clearTimeout(room.disconnectTimers.p1);
+        room.disconnectTimers.p1 = null;
+      }
+      room.players.p1.socketId = socketId;
+      this.socketToRoom.set(socketId, { code: upperCode, playerKey: "p1" });
+      return { success: true, playerKey: "p1", room, reconnected: true };
+    }
+    if (room.players.p2 && room.players.p2.sessionId === sessionId) {
+      if (room.disconnectTimers.p2) {
+        clearTimeout(room.disconnectTimers.p2);
+        room.disconnectTimers.p2 = null;
+      }
+      room.players.p2.socketId = socketId;
+      this.socketToRoom.set(socketId, { code: upperCode, playerKey: "p2" });
+      return { success: true, playerKey: "p2", room, reconnected: true };
+    }
+
+    if (room.players.p2 !== null) return { success: false, error: "That room is already full." };
+    if (room.players.p1.socketId === socketId) return { success: false, error: "You cannot join your own room." };
 
     // Register p2
-    room.players.p2 = { socketId, rawTeam, pendingAction: null };
+    room.players.p2 = { socketId, rawTeam, pendingAction: null, sessionId };
     this.socketToRoom.set(socketId, { code: upperCode, playerKey: "p2" });
 
     // Build initial battle state from both teams
@@ -110,7 +131,7 @@ class RoomManager {
     };
     room.phase = "picking";
 
-    return { success: true, playerKey: "p2", room };
+    return { success: true, playerKey: "p2", room, reconnected: false };
   }
 
   /**
@@ -219,10 +240,10 @@ class RoomManager {
   }
 
   /**
-   * Remove a socket from its room (on disconnect).
-   * Returns { opponentSocketId, code } or null.
+   * Remove a socket from its room (on disconnect) and start a grace timer.
+   * Returns { opponentSocketId, code, playerKey } or null.
    */
-  removeSocket(socketId) {
+  removeSocket(socketId, onTimeout) {
     const info = this.socketToRoom.get(socketId);
     if (!info) return null;
 
@@ -232,14 +253,22 @@ class RoomManager {
     this.socketToRoom.delete(socketId);
     if (!room) return null;
 
+    room.players[playerKey].socketId = null;
+
     const opp = this._oppKey(playerKey);
     const opponentSocketId = room.players[opp]?.socketId ?? null;
 
-    // Phase 5 will add reconnect grace periods — for now, tear down the room
-    this.rooms.delete(code);
-    if (opponentSocketId) this.socketToRoom.delete(opponentSocketId);
+    // Start 90s grace timer
+    room.disconnectTimers[playerKey] = setTimeout(() => {
+      // If timer executes, the room is truly dead
+      this.rooms.delete(code);
+      if (room.players[opp]?.socketId) {
+        this.socketToRoom.delete(room.players[opp].socketId);
+      }
+      if (onTimeout) onTimeout({ opponentSocketId, code });
+    }, 90000);
 
-    return { opponentSocketId, code };
+    return { opponentSocketId, code, playerKey };
   }
 
   // ── Client state builder ───────────────────────────────────────────────────
