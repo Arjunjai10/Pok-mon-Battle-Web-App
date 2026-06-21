@@ -1,0 +1,119 @@
+[
+  {
+    "id": 211,
+    "name": "leftovers",
+    "displayName": "Leftovers",
+    "category": "held-items",
+    "shortEffect": "Held: Restores 1/16 (6.25%) holder’s max HP at the end of each turn.",
+    "flavorText": "An item to be held by a Pokémon. The holder’s HP is slowly but steadily restored throughout every battle.",
+    "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/leftovers.png"
+  },
+  {
+    "id": 198,
+    "name": "kings-rock",
+    "displayName": "King's Rock",
+    "category": "held-items",
+    "shortEffect": "Held: Damaging moves gain a 10% chance to make their target flinch. Traded on a Poliwhirl: Holder evolves into Politoed. Traded on a Slowpoke: Holder evolves into Slowking.",
+    "flavorText": "An item to be held by a Pokémon. When the holder successfully inflicts damage, the target may also flinch.",
+    "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/kings-rock.png"
+  },
+  {
+    "id": 197,
+    "name": "choice-band",
+    "displayName": "Choice Band",
+    "category": "choice",
+    "shortEffect": "Held: Increases Attack by 50%, but restricts the holder to only one move.",
+    "flavorText": "An item to be held by a Pokémon. This curious headband boosts Attack but only allows the use of one move.",
+    "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-band.png"
+  },
+  {
+    "id": 134,
+    "name": "lum-berry",
+    "displayName": "Lum Berry",
+    "category": "medicine",
+    "shortEffect": "Held: Consumed to cure any status condition or confusion.",
+    "flavorText": "A Berry to be consumed by Pokémon. If a Pokémon holds one, it can recover from any status condition during battle.",
+    "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lum-berry.png"
+  },
+  {
+    "id": 135,
+    "name": "sitrus-berry",
+    "displayName": "Sitrus Berry",
+    "category": "medicine",
+    "shortEffect": "Held: Consumed at 1/2 max HP to recover 1/4 max HP.",
+    "flavorText": "A Berry to be consumed by Pokémon. If a Pokémon holds one, it can restore its own HP by a small amount during battle.",
+    "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sitrus-berry.png"
+  },
+  {
+    "id": 132,
+    "name": "oran-berry",
+    "displayName": "Oran Berry",
+    "category": "medicine",
+    "shortEffect": "Held: Consumed at 1/2 max HP to recover 10 HP.",
+    "flavorText": "A Berry to be consumed by Pokémon. If a Pokémon holds one, it can restore its own HP by 10 points during battle.",
+    "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/oran-berry.png"
+  },
+  {
+    "id": 127,
+    "name": "chesto-berry",
+    "displayName": "Chesto Berry",
+    "category": "medicine",
+    "shortEffect": "Held: Consumed when asleep to cure sleep.",
+    "flavorText": "A Berry to be consumed by Pokémon. If a Pokémon holds one, it can recover from sleep on its own in battle.",
+    "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/chesto-berry.png"
+  },
+  {
+    "id": 128,
+    "name": "pecha-berry",
+    "displayName": "Pecha Berry",
+    "category": "medicine",
+    "shortEffect": "Held: Consumed when poisoned to cure poison.",
+    "flavorText": "A Berry to be consumed by Pokémon. If a Pokémon holds one, it can recover from poisoning on its own in battle.",
+    "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pecha-berry.png"
+  },
+  {
+    "id": 129,
+    "name": "rawst-berry",
+    "displayName": "Rawst Berry",
+    "category": "medicine",
+    "shortEffect": "Held: Consumed when burned to cure a burn.",
+    "flavorText": "A Berry to be consumed by Pokémon. If a Pokémon holds one, it can recover from a burn on its own in battle.",
+    "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rawst-berry.png"
+  },
+  {
+    "id": 130,
+    "name": "aspear-berry",
+    "displayName": "Aspear Berry",
+    "category": "medicine",
+    "shortEffect": "Held: Consumed when frozen to cure frozen.",
+    "flavorText": "A Berry to be consumed by Pokémon. If a Pokémon holds one, it can recover from being frozen on its own in battle.",
+    "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/aspear-berry.png"
+  },
+  {
+    "id": 126,
+    "name": "cheri-berry",
+    "displayName": "Cheri Berry",
+    "category": "medicine",
+    "shortEffect": "Held: Consumed when paralyzed to cure paralysis.",
+    "flavorText": "A Berry to be consumed by Pokémon. If a Pokémon holds one, it can recover from paralysis on its own in battle.",
+    "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/cheri-berry.png"
+  },
+  {
+    "id": 209,
+    "name": "scope-lens",
+    "displayName": "Scope Lens",
+    "category": "held-items",
+    "shortEffect": "Held: Raises the holder’s critical hit ratio by one stage.",
+    "flavorText": "An item to be held by a Pokémon. It’s a lens for scoping out weak points. It boosts the holder’s critical-hit ratio.",
+    "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/scope-lens.png"
+  },
+  {
+    "id": 230,
+    "name": "shell-bell",
+    "displayName": "Shell Bell",
+    "category": "held-items",
+    "shortEffect": "Held: Holder receives 1/8 of the damage it deals when attacking.",
+    "flavorText": "An item to be held by a Pokémon. The holder restores a little HP every time it inflicts damage on others.",
+    "spriteUrl": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/shell-bell.png"
+  }
+]
