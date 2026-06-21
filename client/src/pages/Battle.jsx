@@ -341,7 +341,7 @@ export default function Battle() {
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-[var(--color-bg-deep)] p-2 sm:p-4 max-w-4xl mx-auto gap-2 sm:gap-4 font-body">
+    <div className="flex flex-col h-[100dvh] bg-[var(--color-bg-deep)] p-2 sm:p-4 max-w-6xl mx-auto gap-2 sm:gap-4 font-body">
       
       {/* Header */}
       <div className="flex justify-between items-center glass-card px-4 py-2 flex-shrink-0">
@@ -355,139 +355,115 @@ export default function Battle() {
         </div>
       </div>
 
-      {/* Battle Field */}
-      <div className="flex-1 glass-card relative p-4 sm:p-6 flex flex-col justify-between overflow-y-auto bg-gradient-to-b from-[var(--color-bg-deep)] to-[var(--color-bg-panel)]">
-        {/* Environment Decor */}
-        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(ellipse_at_center,_var(--color-primary)_0%,_transparent_70%)]"></div>
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8Y2lyY2xlIGN4PSIyIiBjeT0iMiIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIvPgo8L3N2Zz4=')] opacity-50"></div>
+      {/* Main Layout Split */}
+      <div className="flex flex-col lg:flex-row gap-2 sm:gap-4 flex-1 min-h-0">
         
-        {/* Opponent */}
-        <div className="self-start w-full">
-          {renderActivePokemon(opponent.active, true)}
-        </div>
-        
-        {/* Player */}
-        <div className="self-end w-full mt-4 sm:mt-8">
-          {renderActivePokemon(me.active, false)}
-        </div>
-      </div>
-
-      {/* Bottom Area: Controls + Log */}
-      <div className="flex flex-col md:flex-row gap-2 sm:gap-4 h-auto md:h-48 flex-shrink-0">
-        
-        {/* Controls */}
-        <div className="flex-1 glass-card p-3 sm:p-4 min-h-[160px] md:min-h-0">
+        {/* Left Column (Battle Field + Controls) */}
+        <div className="flex flex-col flex-1 gap-2 sm:gap-4 min-w-0">
           
-          {phase === "waiting" && (
-            <div className="flex flex-col h-full items-center justify-center text-[var(--color-text-secondary)] gap-3">
-              <div className="flex items-center gap-2 animate-pulse">
-                <div className="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)]"></div>
-                <span className="font-medium">Waiting for opponent...</span>
-              </div>
-              {lockedAction && (
-                <div className="text-xs text-[var(--color-text-muted)] bg-[var(--color-bg-deep)] px-3 py-1.5 rounded-full border border-[var(--color-border)]">
-                  Locked in: <strong className="text-[var(--color-text-primary)]">{lockedAction.type === "move" ? lockedAction.move.name : "Switch"}</strong>
+          {/* Battle Field */}
+          <div className="flex-1 glass-card relative p-4 sm:p-6 flex flex-col justify-between overflow-y-auto bg-gradient-to-b from-[var(--color-bg-deep)] to-[var(--color-bg-panel)]">
+            {/* Environment Decor */}
+            <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(ellipse_at_center,_var(--color-primary)_0%,_transparent_70%)]"></div>
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8Y2lyY2xlIGN4PSIyIiBjeT0iMiIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIvPgo8L3N2Zz4=')] opacity-50"></div>
+            
+            {/* Opponent (Top Right) */}
+            <div className="self-end w-full flex justify-end">
+              {renderActivePokemon(opponent.active, true)}
+            </div>
+            
+            {/* Player (Bottom Left) */}
+            <div className="self-start w-full mt-4 sm:mt-8">
+              {renderActivePokemon(me.active, false)}
+            </div>
+          </div>
+
+          {/* Controls Area */}
+          <div className="glass-card p-3 sm:p-4 flex-shrink-0 min-h-[160px] lg:min-h-[14rem] flex flex-col justify-center">
+            {phase === "waiting" && (
+              <div className="flex flex-col h-full items-center justify-center text-[var(--color-text-secondary)] gap-3">
+                <div className="flex items-center gap-2 animate-pulse">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)]"></div>
+                  <span className="font-medium">Waiting for opponent...</span>
                 </div>
-              )}
-            </div>
-          )}
-
-          {phase === "picking" && uiView === "main" && (
-            <div className="grid grid-cols-2 gap-3 h-full">
-              <button 
-                onClick={() => setUiView("fight")}
-                className="bg-[var(--color-primary-dim)] hover:bg-[var(--color-primary)] border border-[var(--color-border-glow)] rounded text-[var(--color-text-primary)] font-bold transition-colors text-lg"
-              >
-                FIGHT
-              </button>
-              <button 
-                onClick={() => setUiView("switch")}
-                className="bg-[var(--color-bg-panel)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-secondary)] font-bold transition-colors text-lg"
-              >
-                POKéMON
-              </button>
-            </div>
-          )}
-
-          {phase === "picking" && uiView === "fight" && (
-            <div className="flex flex-col h-full">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-bold text-[var(--color-text-primary)]">Select a move:</span>
-                <button onClick={() => setUiView("main")} className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] uppercase font-bold tracking-wider">Cancel</button>
+                {lockedAction && (
+                  <div className="text-xs text-[var(--color-text-muted)] bg-[var(--color-bg-deep)] px-3 py-1.5 rounded-full border border-[var(--color-border)]">
+                    Locked in: <strong className="text-[var(--color-text-primary)]">{lockedAction.type === "move" ? lockedAction.move.name : "Switch"}</strong>
+                  </div>
+                )}
               </div>
-              <div className="grid grid-cols-2 gap-2 flex-1">
-                {me.active.moves.map((m, i) => (
-                  <button 
-                    key={i}
-                    onClick={() => handleMove(m)}
-                    disabled={m.currentPp <= 0}
-                    className="group relative flex flex-col items-start justify-center px-3 py-2 rounded disabled:opacity-50 transition-colors border"
-                    style={{
-                      borderColor: `var(--color-type-${m.type.toLowerCase()})`,
-                      backgroundColor: `color-mix(in srgb, var(--color-type-${m.type.toLowerCase()}) 15%, var(--color-bg-panel))`,
-                    }}
-                  >
-                    <div className="flex justify-between w-full">
-                      <span className="font-bold text-[var(--color-text-primary)]">{m.name}</span>
-                      <span className="text-xs font-mono text-[var(--color-text-secondary)]">PP {m.currentPp}/{m.pp}</span>
-                    </div>
-                    <div className="text-[0.65rem] text-[var(--color-text-muted)] uppercase tracking-wider font-bold">
-                      {m.type}
-                    </div>
+            )}
 
-                    {/* Move Tooltip */}
-                    <div className="hidden group-hover:block absolute bottom-full left-0 mb-2 w-56 p-2 bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded shadow-2xl text-left z-[100] text-xs cursor-default">
-                      <div className="font-bold text-[var(--color-text-primary)] mb-1.5 flex items-center gap-2">
-                        <span className="px-1.5 py-0.5 rounded uppercase tracking-wider text-[9px] text-white" style={{ backgroundColor: `var(--color-type-${m.type.toLowerCase()})` }}>{m.type}</span>
-                        {m.damageClass && <span className="text-[var(--color-text-muted)] capitalize text-[10px]">{m.damageClass}</span>}
-                      </div>
-                      <div className="text-[var(--color-text-secondary)] mb-1.5">
-                        Power: <span className="text-[var(--color-text-primary)]">{m.power || "—"}</span> | Acc: <span className="text-[var(--color-text-primary)]">{m.accuracy || "—"}</span>
-                      </div>
-                      <div className="text-[var(--color-text-primary)] leading-snug">
-                        {m.effect || "No additional effect."}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+            {phase === "picking" && (
+              <div className="flex flex-col lg:flex-row h-full gap-4 overflow-y-auto lg:overflow-visible">
+                {/* Moves (Left half on desktop) */}
+                <div className="flex-1 flex flex-col">
+                  <span className="text-sm font-bold text-[var(--color-text-primary)] mb-2">Attack:</span>
+                  <div className="grid grid-cols-2 gap-2 flex-1">
+                    {me.active.moves.map((m, i) => (
+                      <button 
+                        key={i}
+                        onClick={() => handleMove(m)}
+                        disabled={m.currentPp <= 0}
+                        className="group relative flex flex-col items-start justify-center px-2 sm:px-3 py-2 rounded disabled:opacity-50 transition-colors border"
+                        style={{
+                          borderColor: `var(--color-type-${m.type.toLowerCase()})`,
+                          backgroundColor: `color-mix(in srgb, var(--color-type-${m.type.toLowerCase()}) 15%, var(--color-bg-panel))`,
+                        }}
+                      >
+                        <div className="flex justify-between w-full items-center">
+                          <span className="font-bold text-[var(--color-text-primary)] text-sm">{m.name}</span>
+                          <span className="text-[10px] font-mono text-[var(--color-text-secondary)]">PP {m.currentPp}/{m.pp}</span>
+                        </div>
+                        <div className="text-[0.65rem] text-[var(--color-text-muted)] uppercase tracking-wider font-bold">
+                          {m.type}
+                        </div>
 
-          {uiView === "switch" && phase !== "force-switch" && (
-            <div className="flex flex-col h-full overflow-y-auto custom-scrollbar pr-2">
-              <div className="flex justify-between items-center mb-2 sticky top-0 bg-[var(--color-bg-deep)] z-10 pb-1">
-                <span className="text-sm font-bold text-[var(--color-text-primary)]">
-                  Switch to:
-                </span>
-                <button onClick={() => setUiView("main")} className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] uppercase">Cancel</button>
-              </div>
-              <div className="flex flex-col gap-2">
-                {me.bench.map((b) => (
-                  <button
-                    key={b.benchIndex}
-                    onClick={() => handleSwitch(b.benchIndex)}
-                    disabled={b.currentHp <= 0}
-                    className="flex items-center gap-3 p-2 bg-[var(--color-bg-panel)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] rounded disabled:opacity-50 transition-colors text-left"
-                  >
-                    <img src={b.spriteUrl} alt={b.name} className="w-10 h-10 object-contain" />
-                    <div className="flex-1">
-                      <div className="font-bold text-[var(--color-text-primary)] text-sm">{b.name}</div>
-                      <HpBar current={b.currentHp} max={b.maxHp} size="sm" showText={false} />
-                    </div>
-                    <div className="text-xs font-mono text-[var(--color-text-secondary)]">
-                      {b.currentHp}/{b.maxHp}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+                        {/* Move Tooltip */}
+                        <div className="hidden lg:group-hover:block absolute bottom-full left-0 mb-2 w-56 p-2 bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded shadow-2xl text-left z-[100] text-xs cursor-default">
+                          <div className="font-bold text-[var(--color-text-primary)] mb-1.5 flex items-center gap-2">
+                            <span className="px-1.5 py-0.5 rounded uppercase tracking-wider text-[9px] text-white" style={{ backgroundColor: `var(--color-type-${m.type.toLowerCase()})` }}>{m.type}</span>
+                            {m.damageClass && <span className="text-[var(--color-text-muted)] capitalize text-[10px]">{m.damageClass}</span>}
+                          </div>
+                          <div className="text-[var(--color-text-secondary)] mb-1.5">
+                            Power: <span className="text-[var(--color-text-primary)]">{m.power || "—"}</span> | Acc: <span className="text-[var(--color-text-primary)]">{m.accuracy || "—"}</span>
+                          </div>
+                          <div className="text-[var(--color-text-primary)] leading-snug">
+                            {m.effect || "No additional effect."}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
+                {/* Switch Bench (Right half on desktop) */}
+                <div className="flex-1 flex flex-col lg:border-l border-[var(--color-border)] lg:pl-4">
+                  <span className="text-sm font-bold text-[var(--color-text-primary)] mb-2">Switch:</span>
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+                    {me.bench.map((b) => (
+                      <button
+                        key={b.benchIndex}
+                        onClick={() => handleSwitch(b.benchIndex)}
+                        disabled={b.currentHp <= 0}
+                        className="flex items-center gap-2 p-1.5 bg-[var(--color-bg-panel)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] rounded disabled:opacity-50 transition-colors text-left"
+                      >
+                        <img src={b.spriteUrl} alt={b.name} className="w-8 h-8 object-contain drop-shadow-md" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-[var(--color-text-primary)] text-xs truncate mb-0.5">{b.name}</div>
+                          <HpBar current={b.currentHp} max={b.maxHp} size="sm" showText={false} />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Log */}
-        <div className="flex-1">
+        {/* Right Column (Battle Log) */}
+        <div className="w-full lg:w-96 flex flex-col flex-shrink-0 h-64 lg:h-auto min-h-0">
           <BattleLog entries={logEntries} />
         </div>
 
