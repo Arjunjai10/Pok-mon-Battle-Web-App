@@ -45,7 +45,6 @@ export default function Battle() {
     }
 
     function handleTurnResult({ state, log, events }) {
-      setGameState(state);
       setLockedAction(null);
       if (log && log.length > 0) {
         setLogEntries((prev) => [...prev, ...log]);
@@ -57,8 +56,39 @@ export default function Battle() {
           delay: idx * 1200 // Stagger by 1.2s each
         }));
         setFloatingEvents((prev) => [...prev, ...timedEvents]);
+
+        // Stagger HP updates visually before setting final state
+        events.forEach((event, idx) => {
+          setTimeout(() => {
+            if (event.type === "damage") {
+              setGameState(prev => {
+                if (!prev) return prev;
+                const next = { ...prev };
+                if (next[event.targetKey]) {
+                  next[event.targetKey] = {
+                    ...next[event.targetKey],
+                    active: {
+                      ...next[event.targetKey].active,
+                      currentHp: Math.max(0, next[event.targetKey].active.currentHp - event.amount)
+                    }
+                  };
+                }
+                return next;
+              });
+            }
+          }, idx * 1200 + 100);
+        });
+
+        const totalDelay = events.length * 1200 + 1000;
+        setTimeout(() => {
+          setGameState(state);
+          setUiView("main");
+        }, totalDelay);
+
+      } else {
+        setGameState(state);
+        setUiView("main");
       }
-      setUiView("main");
     }
 
     function handleForceSwitchResult({ state, log }) {
@@ -254,7 +284,7 @@ export default function Battle() {
 
   const renderActivePokemon = (p, isOpponent) => {
     const targetKey = isOpponent ? "opponent" : "me";
-    const myEvents = floatingEvents.filter(e => e.target === targetKey);
+    const myEvents = floatingEvents.filter(e => e.targetKey === targetKey);
 
     return (
       <div className={`flex flex-col sm:flex-row items-center sm:items-end gap-2 sm:gap-4 ${isOpponent ? "" : "sm:flex-row-reverse"}`}>
