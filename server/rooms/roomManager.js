@@ -173,6 +173,40 @@ class RoomManager {
   }
 
   /**
+   * Request a rematch.
+   * Returns { success, bothReady, room? }
+   */
+  submitRematch(code, playerKey) {
+    const room = this.rooms.get(code);
+    if (!room) return { success: false, error: "Room not found." };
+    if (room.phase !== "battle-over") return { success: false, error: "Battle is not over." };
+
+    // We can hijack pendingAction to store the rematch ready state during battle-over
+    room.players[playerKey].pendingAction = { type: "rematch" };
+
+    const p1Ready = room.players.p1?.pendingAction?.type === "rematch";
+    const p2Ready = room.players.p2?.pendingAction?.type === "rematch";
+
+    if (p1Ready && p2Ready) {
+      // Reset the room
+      room.players.p1.pendingAction = null;
+      room.players.p2.pendingAction = null;
+      room.pendingForceSwitches = new Set();
+      
+      // Re-initialize battle state from fresh teams
+      room.battleState = {
+        p1: teamToEngineState(room.players.p1.rawTeam, "p1"),
+        p2: teamToEngineState(room.players.p2.rawTeam, "p2"),
+        turn: 1,
+        winner: null,
+      };
+      room.phase = "picking";
+    }
+
+    return { success: true, bothReady: p1Ready && p2Ready, room };
+  }
+
+  /**
    * Resolve the current turn (both actions must be submitted).
    * Returns { newState, log, forceSwitches: Set<playerKey>, winner } or null.
    */

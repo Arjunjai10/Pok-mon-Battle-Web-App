@@ -165,6 +165,43 @@ io.on("connection", (socket) => {
     }
   });
 
+  // ── Submit Rematch ──────────────────────────────────────────────────────────
+  socket.on("submit-rematch", () => {
+    try {
+      const info = rooms.getRoomBySocket(socket.id);
+      if (!info) return socket.emit("error", { message: "You are not in a room." });
+
+      const { code, playerKey } = info;
+      const result = rooms.submitRematch(code, playerKey);
+
+      if (!result.success) return socket.emit("error", { message: result.error });
+
+      log(`rematch  ${code}  ${playerKey}  bothReady=${result.bothReady}`);
+
+      if (result.bothReady) {
+        log(`rematch accepted  ${code}`);
+        const { room } = result;
+        const p1SocketId = room.players.p1.socketId;
+        const p2SocketId = room.players.p2.socketId;
+
+        io.to(p1SocketId).emit("battle-start", {
+          playerKey: "p1",
+          state: rooms.buildClientState(room, "p1"),
+        });
+        io.to(p2SocketId).emit("battle-start", {
+          playerKey: "p2",
+          state: rooms.buildClientState(room, "p2"),
+        });
+      } else {
+        // Just acknowledge they are waiting
+        socket.emit("rematch-waiting");
+      }
+    } catch (err) {
+      console.error("[submit-rematch]", err);
+      socket.emit("error", { message: "Failed to request rematch." });
+    }
+  });
+
   // ── Disconnect ───────────────────────────────────────────────────────────────
   socket.on("disconnect", (reason) => {
     log(`disconnected  ${short(socket.id)}  reason=${reason}`);
