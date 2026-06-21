@@ -95,10 +95,15 @@ body {
   0%, 100% { box-shadow: 0 0 8px 2px rgba(79, 142, 247, 0.3); }
   50%       { box-shadow: 0 0 20px 6px rgba(79, 142, 247, 0.6); }
 }
+@keyframes faint-sink {
+  0%   { transform: translateY(0); opacity: 1; filter: grayscale(0%); }
+  100% { transform: translateY(40px); opacity: 0; filter: grayscale(100%); }
+}
 
 .animate-fade-in    { animation: fade-in   0.25s ease both; }
 .animate-scale-in   { animation: scale-in  0.2s  ease both; }
 .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+.animate-faint-sink { animation: faint-sink 0.8s forwards ease-in; }
 
 /* ── Glass card ── */
 .glass-card {

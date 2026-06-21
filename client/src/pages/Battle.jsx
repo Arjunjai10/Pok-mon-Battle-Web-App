@@ -14,6 +14,7 @@ export default function Battle() {
   const [uiView, setUiView] = useState("main"); // "main" | "fight" | "switch"
   const [modalMessage, setModalMessage] = useState(null);
   const [opponentReconnectingMsg, setOpponentReconnectingMsg] = useState(null);
+  const [rematchWaiting, setRematchWaiting] = useState(false);
 
   useEffect(() => {
     if (!gameState) {
@@ -26,6 +27,13 @@ export default function Battle() {
       // Local optimistic update — Phase 4 says the server state will soon catch up
       setGameState((prev) => ({ ...prev, phase: "waiting" }));
       setUiView("main");
+    }
+
+    function handleBattleStart({ state }) {
+      setGameState(state);
+      setLogEntries(["Battle started!"]);
+      setUiView("main");
+      setRematchWaiting(false);
     }
 
     function handleTurnResult({ state, log }) {
@@ -66,7 +74,12 @@ export default function Battle() {
       if (log && log.length > 0) {
         setLogEntries((prev) => [...prev, ...log]);
       }
+      setRematchWaiting(false);
       // state.phase will also be 'battle-over'
+    }
+
+    function handleRematchWaiting() {
+      setRematchWaiting(true);
     }
 
     function handleError({ message }) {
@@ -74,22 +87,26 @@ export default function Battle() {
     }
 
     socket.on("action-received", handleActionReceived);
+    socket.on("battle-start", handleBattleStart);
     socket.on("turn-result", handleTurnResult);
     socket.on("force-switch-result", handleForceSwitchResult);
     socket.on("opponent-reconnecting", handleOpponentReconnecting);
     socket.on("battle-reconnected", handleBattleReconnected);
     socket.on("opponent-disconnected", handleOpponentDisconnected);
     socket.on("battle-over", handleBattleOver);
+    socket.on("rematch-waiting", handleRematchWaiting);
     socket.on("error", handleError);
 
     return () => {
       socket.off("action-received", handleActionReceived);
+      socket.off("battle-start", handleBattleStart);
       socket.off("turn-result", handleTurnResult);
       socket.off("force-switch-result", handleForceSwitchResult);
       socket.off("opponent-reconnecting", handleOpponentReconnecting);
       socket.off("battle-reconnected", handleBattleReconnected);
       socket.off("opponent-disconnected", handleOpponentDisconnected);
       socket.off("battle-over", handleBattleOver);
+      socket.off("rematch-waiting", handleRematchWaiting);
       socket.off("error", handleError);
     };
   }, [socket, gameState, navigate]);
@@ -139,20 +156,20 @@ export default function Battle() {
   };
 
   const renderActivePokemon = (p, isOpponent) => (
-    <div className={`flex items-end gap-4 ${isOpponent ? "flex-row" : "flex-row-reverse"}`}>
-      <div className="relative w-32 h-32 flex-shrink-0">
+    <div className={`flex flex-col sm:flex-row items-center sm:items-end gap-2 sm:gap-4 ${isOpponent ? "" : "sm:flex-row-reverse"}`}>
+      <div className="relative w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0">
         <img 
           src={p.spriteUrl} 
           alt={p.name} 
-          className={`w-full h-full object-contain ${p.currentHp <= 0 ? "grayscale opacity-50 translate-y-4" : ""} transition-all duration-500`}
+          className={`w-full h-full object-contain ${p.currentHp <= 0 ? "animate-faint-sink" : "transition-all duration-500"}`}
         />
       </div>
-      <div className={`glass-card p-3 flex-1 max-w-[240px] ${p.currentHp <= 0 ? "opacity-50" : ""}`}>
+      <div className={`glass-card p-3 w-full sm:w-auto sm:flex-1 max-w-[240px] transition-opacity duration-500 ${p.currentHp <= 0 ? "opacity-30" : ""}`}>
         <div className="flex justify-between items-baseline mb-1">
-          <div className="font-bold text-[var(--color-text-primary)]">
+          <div className="font-bold text-[var(--color-text-primary)] text-sm sm:text-base">
             {p.name} {renderStatus(p.status)}
           </div>
-          <div className="text-xs font-mono text-[var(--color-text-muted)]">Lv.100</div>
+          <div className="text-[10px] sm:text-xs font-mono text-[var(--color-text-muted)]">Lv.100</div>
         </div>
         <HpBar current={p.currentHp} max={p.maxHp} />
       </div>
@@ -160,38 +177,38 @@ export default function Battle() {
   );
 
   return (
-    <div className="flex flex-col h-screen bg-[var(--color-bg-deep)] p-4 max-w-4xl mx-auto gap-4">
+    <div className="flex flex-col h-[100dvh] bg-[var(--color-bg-deep)] p-2 sm:p-4 max-w-4xl mx-auto gap-2 sm:gap-4">
       
       {/* Header */}
-      <div className="flex justify-between items-center glass-card px-4 py-2">
+      <div className="flex justify-between items-center glass-card px-4 py-2 flex-shrink-0">
         <div className="text-sm font-bold text-[var(--color-text-secondary)]">
           Turn {turn}
         </div>
         <div className="flex gap-1">
           {opponent.bench.map((b, i) => (
-            <div key={i} className={`w-3 h-3 rounded-full ${b.currentHp > 0 ? "bg-[var(--color-primary)]" : "bg-[var(--color-danger)] opacity-50"}`} />
+            <div key={i} className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full ${b.currentHp > 0 ? "bg-[var(--color-primary)]" : "bg-[var(--color-danger)] opacity-50"}`} />
           ))}
         </div>
       </div>
 
       {/* Battle Field */}
-      <div className="flex-1 glass-card relative p-6 flex flex-col justify-between overflow-hidden bg-gradient-to-b from-[#1a202c] to-[#0f172a]">
+      <div className="flex-1 glass-card relative p-4 sm:p-6 flex flex-col justify-between overflow-y-auto bg-gradient-to-b from-[#1a202c] to-[#0f172a]">
         {/* Opponent */}
         <div className="self-start w-full">
           {renderActivePokemon(opponent.active, true)}
         </div>
         
         {/* Player */}
-        <div className="self-end w-full mt-8">
+        <div className="self-end w-full mt-4 sm:mt-8">
           {renderActivePokemon(me.active, false)}
         </div>
       </div>
 
       {/* Bottom Area: Controls + Log */}
-      <div className="flex gap-4 h-48">
+      <div className="flex flex-col md:flex-row gap-2 sm:gap-4 h-auto md:h-48 flex-shrink-0">
         
         {/* Controls */}
-        <div className="flex-1 glass-card p-4">
+        <div className="flex-1 glass-card p-3 sm:p-4 min-h-[160px] md:min-h-0">
           
           {phase === "waiting" && (
             <div className="flex h-full items-center justify-center text-[var(--color-text-secondary)] font-medium">
@@ -206,14 +223,23 @@ export default function Battle() {
           )}
 
           {phase === "battle-over" && (
-            <div className="flex flex-col h-full items-center justify-center text-center gap-2">
+            <div className="flex flex-col h-full items-center justify-center text-center gap-3">
               <div className="text-xl font-bold text-[var(--color-primary)]">Battle Over</div>
-              <button 
-                onClick={() => { socket.disconnect(); navigate("/"); }}
-                className="px-4 py-2 bg-[var(--color-bg-panel)] rounded border border-[var(--color-border)] hover:bg-[var(--color-bg-hover)] transition-colors"
-              >
-                Return to Team Builder
-              </button>
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => socket.emit("submit-rematch")}
+                  disabled={rematchWaiting}
+                  className="px-4 py-2 bg-[var(--color-success)] text-green-950 font-bold rounded border border-green-500 hover:bg-green-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {rematchWaiting ? "Waiting for Opponent..." : "Rematch"}
+                </button>
+                <button 
+                  onClick={() => { socket.disconnect(); navigate("/"); }}
+                  className="px-4 py-2 bg-[var(--color-bg-panel)] rounded border border-[var(--color-border)] hover:bg-[var(--color-bg-hover)] transition-colors"
+                >
+                  Return to Lobby
+                </button>
+              </div>
             </div>
           )}
 
