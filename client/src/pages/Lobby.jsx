@@ -4,13 +4,27 @@ import { useSocket } from "../context/SocketContext";
 
 export default function Lobby() {
   const navigate = useNavigate();
-  const socket = useSocket();
+  const { socket, isConnected } = useSocket();
   const [team, setTeam] = useState(null);
   
   const [joinCode, setJoinCode] = useState("");
   const [isWaiting, setIsWaiting] = useState(false);
   const [myCode, setMyCode] = useState(null);
   const [error, setError] = useState("");
+
+  const [showWakeMessage, setShowWakeMessage] = useState(false);
+
+  // If not connected after 2 seconds, show the wake message
+  useEffect(() => {
+    if (isConnected) {
+      setShowWakeMessage(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setShowWakeMessage(true);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [isConnected]);
 
   // Load team from sessionStorage on mount
   useEffect(() => {
@@ -102,15 +116,23 @@ export default function Lobby() {
           </div>
         )}
 
+        {showWakeMessage && !isConnected && (
+          <div className="bg-yellow-500/20 border border-yellow-500/50 text-yellow-200 text-sm p-3 rounded-lg flex items-center justify-center gap-2">
+            <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+            Waking up server, hang on... (first connection takes ~30s)
+          </div>
+        )}
+
         {!isWaiting ? (
           <div className="space-y-6">
             {/* Create Room */}
             <div className="flex flex-col gap-2">
               <button 
                 onClick={handleCreateRoom}
-                className="w-full py-3 bg-[var(--color-primary)] hover:bg-[var(--color-primary-light)] text-white font-bold rounded-lg transition-colors shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_20px_rgba(59,130,246,0.5)]"
+                disabled={!isConnected}
+                className="w-full py-3 bg-[var(--color-primary)] hover:bg-[var(--color-primary-light)] text-white font-bold rounded-lg transition-colors shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_20px_rgba(59,130,246,0.5)] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Create New Room
+                {isConnected ? "Create New Room" : "Connecting..."}
               </button>
             </div>
 
@@ -137,10 +159,10 @@ export default function Lobby() {
               </div>
               <button 
                 type="submit"
-                disabled={joinCode.length < 1}
+                disabled={joinCode.length < 1 || !isConnected}
                 className="w-full py-3 bg-[var(--color-bg-panel)] hover:bg-[var(--color-bg-hover)] text-[var(--color-text-primary)] font-bold rounded-lg border border-[var(--color-border)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Join Room
+                {isConnected ? "Join Room" : "Connecting..."}
               </button>
             </form>
           </div>
