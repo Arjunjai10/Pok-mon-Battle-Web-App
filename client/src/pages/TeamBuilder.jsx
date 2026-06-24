@@ -260,22 +260,24 @@ export default function TeamBuilder() {
   return (
     <div className="flex flex-col h-screen bg-[var(--color-bg-deep)] overflow-hidden">
       {/* ── Header ── */}
-      <header className="flex-none flex items-center justify-between px-6 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg-card)]">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">⚔️</span>
+      <header className="flex-none flex items-center justify-between px-6 py-4 glass-card border-x-0 border-t-0 rounded-none z-30 sticky top-0 bg-[var(--color-bg-card)]/80 backdrop-blur-xl">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 flex items-center justify-center bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] rounded-xl shadow-lg shadow-[var(--color-primary)]/20">
+            <span className="text-xl">⚔️</span>
+          </div>
           <div>
-            <h1 className="font-display font-bold text-lg text-[var(--color-text-primary)] leading-none">
+            <h1 className="font-display font-extrabold text-2xl text-[var(--color-text-primary)] leading-none tracking-wide">
               Pokémon Battle
             </h1>
-            <p className="text-[0.7rem] text-[var(--color-text-muted)]">Gen I • Team Builder</p>
+            <p className="text-[0.7rem] font-medium text-[var(--color-text-muted)] mt-1 uppercase tracking-widest">Gen I • Team Builder</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-[var(--color-text-secondary)]">
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-bold text-[var(--color-text-secondary)] hidden sm:block">
             <span className={teamPokemonIds.size === TEAM_SIZE ? "text-[var(--color-success)]" : "text-[var(--color-accent)]"}>
               {teamPokemonIds.size}
             </span>
-            <span className="text-[var(--color-text-muted)]"> / {TEAM_SIZE} Pokémon</span>
+            <span className="text-[var(--color-text-muted)]"> / {TEAM_SIZE} Selected</span>
           </span>
           <button
             id="proceed-btn"
@@ -283,9 +285,9 @@ export default function TeamBuilder() {
             disabled={!canProceed}
             title={validationErrors[0] ?? "Go to Lobby"}
             className={[
-              "px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200",
+              "px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-300",
               canProceed
-                ? "bg-[var(--color-primary)] hover:bg-blue-400 text-white shadow-lg shadow-blue-500/30 hover:shadow-blue-400/50 hover:-translate-y-0.5"
+                ? "bg-[var(--color-primary)] hover:bg-[var(--color-primary-light)] text-white shadow-[0_4px_14px_rgba(59,130,246,0.4)] hover:shadow-[0_6px_20px_rgba(59,130,246,0.6)] hover:-translate-y-0.5"
                 : "bg-[var(--color-bg-panel)] text-[var(--color-text-muted)] border border-[var(--color-border)] cursor-not-allowed",
             ].join(" ")}
           >
@@ -384,26 +386,33 @@ export default function TeamBuilder() {
       </div>
 
       {/* ══ BOTTOM: Persistent Team Dock ══════════════════════════════════════════ */}
-      <div className="flex-none border-t border-[var(--color-border)] bg-[var(--color-bg-deep)] px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.5)] z-20">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div className="flex-none border-t border-[var(--color-border)] bg-[var(--color-bg-card)]/90 backdrop-blur-xl px-4 py-4 shadow-[0_-10px_30px_rgba(0,0,0,0.5)] z-40 relative">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-6">
           
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:block text-sm font-bold text-[var(--color-text-secondary)] uppercase tracking-wider">
-              Your Team
-              <div className="text-xs text-[var(--color-text-muted)] mt-0.5">({teamPokemonIds.size}/6)</div>
+          <div className="flex items-center gap-6 w-full sm:w-auto">
+            <div className="hidden sm:block">
+              <div className="text-sm font-extrabold text-[var(--color-text-primary)] uppercase tracking-widest">
+                Your Team
+              </div>
+              <div className="text-xs font-medium text-[var(--color-text-muted)] mt-1">
+                {teamPokemonIds.size}/6 Ready
+              </div>
             </div>
             
-            <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
+            <div className="flex gap-3 overflow-x-auto pb-2 sm:pb-0 custom-scrollbar w-full sm:w-auto justify-center sm:justify-start">
               {team.map((slot, idx) => (
                 <button 
                   key={idx} 
                   onClick={() => slot && setActivePokemon(slot.pokemon)} 
-                  className={`w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0 border rounded-xl flex items-center justify-center transition-all ${slot ? 'bg-[var(--color-bg-panel)] hover:bg-[var(--color-bg-hover)] cursor-pointer hover:-translate-y-1' : 'bg-[var(--color-bg-card)] opacity-30 cursor-default'} ${activePokemon?.id === slot?.pokemon?.id ? 'border-[var(--color-primary)] shadow-[0_0_12px_rgba(59,130,246,0.6)] bg-blue-500/10' : 'border-[var(--color-border)]'}`}
+                  className={`w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0 rounded-2xl flex items-center justify-center transition-all duration-300 relative ${slot ? 'bg-[var(--color-bg-panel)] hover:bg-[var(--color-bg-hover)] cursor-pointer hover:-translate-y-1.5 hover:shadow-xl' : 'bg-[var(--color-bg-input)] opacity-50 cursor-default border border-dashed border-[var(--color-border-glow)]'} ${activePokemon?.id === slot?.pokemon?.id ? 'border-2 border-[var(--color-primary)] shadow-[0_0_20px_rgba(59,130,246,0.3)] bg-[var(--color-primary)]/10 scale-105' : slot ? 'border border-[var(--color-border)]' : ''}`}
                 >
                    {slot ? (
-                     <img src={slot.pokemon.spriteUrl} alt={slot.pokemon.name} className="w-10 h-10 sm:w-12 sm:h-12 object-contain drop-shadow-md" />
+                     <>
+                       <img src={slot.pokemon.spriteUrl} alt={slot.pokemon.name} className="w-10 h-10 sm:w-12 sm:h-12 object-contain drop-shadow-md z-10" />
+                       <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-bg-deep)]/50 to-transparent rounded-2xl z-0"></div>
+                     </>
                    ) : (
-                     <div className="text-2xl font-bold text-[var(--color-text-muted)] opacity-30">{idx + 1}</div>
+                     <div className="text-xl font-bold text-[var(--color-text-muted)] opacity-40">{idx + 1}</div>
                    )}
                 </button>
               ))}
@@ -412,14 +421,14 @@ export default function TeamBuilder() {
 
           <div className="flex flex-col items-end gap-2 w-full sm:w-auto">
             {validationErrors.length > 0 && (
-              <div className="text-[0.65rem] text-[var(--color-danger)] text-right hidden sm:block">
+              <div className="text-[0.65rem] font-bold uppercase tracking-wider text-[var(--color-danger)] text-right hidden sm:block animate-fade-in">
                 {validationErrors[0]}
               </div>
             )}
             <button 
               onClick={handleProceed}
               disabled={!canProceed}
-              className={`w-full sm:w-auto px-8 py-3 rounded-xl font-bold uppercase tracking-wider transition-all shadow-lg ${canProceed ? 'bg-[var(--color-accent)] text-black hover:scale-105 shadow-[var(--color-accent)]/20' : 'bg-[var(--color-bg-panel)] text-[var(--color-text-muted)] cursor-not-allowed border border-[var(--color-border)]'}`}
+              className={`w-full sm:w-auto px-8 py-3.5 rounded-xl font-extrabold uppercase tracking-widest text-sm transition-all duration-300 shadow-xl ${canProceed ? 'bg-gradient-to-r from-[var(--color-accent)] to-[var(--color-accent-dim)] text-black hover:scale-[1.03] shadow-[var(--color-accent)]/20 hover:shadow-[var(--color-accent)]/40' : 'bg-[var(--color-bg-panel)] text-[var(--color-text-muted)] cursor-not-allowed border border-[var(--color-border)] shadow-none opacity-60'}`}
             >
               {canProceed ? "Ready for Battle →" : "Incomplete Team"}
             </button>

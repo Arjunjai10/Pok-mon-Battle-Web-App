@@ -23,20 +23,20 @@ export default function MoveButton({ move, selected, disabled, onClick, levelHin
       onClick={onClick}
       disabled={disabled && !selected}
       className={[
-        "w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-left transition-all duration-150",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400",
+        "w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-left transition-all duration-200 overflow-hidden relative",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]",
         selected
-          ? "border-blue-500 bg-blue-500/15 shadow-sm shadow-blue-500/30"
+          ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10 shadow-[0_0_12px_rgba(59,130,246,0.2)] transform translate-x-1 z-10"
           : disabled
-            ? "border-[var(--color-border)] bg-transparent opacity-35 cursor-not-allowed"
-            : "border-[var(--color-border)] bg-[var(--color-bg-panel)] hover:border-[var(--color-border-glow)] hover:bg-[var(--color-bg-hover)]",
+            ? "border-transparent bg-[var(--color-bg-panel)] opacity-30 cursor-not-allowed grayscale"
+            : "border-[var(--color-border)] bg-[var(--color-bg-panel)] hover:border-[var(--color-border-glow)] hover:bg-[var(--color-bg-hover)] hover:translate-x-1 hover:shadow-md",
       ].join(" ")}
       aria-pressed={selected}
     >
       {/* Checkbox dot */}
       <span className={[
-        "flex-none w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors",
-        selected ? "border-blue-400 bg-blue-500" : "border-[var(--color-text-muted)]",
+        "flex-none w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all duration-300 relative z-10",
+        selected ? "border-[var(--color-primary)] bg-[var(--color-primary)] scale-110 shadow-[0_0_8px_rgba(59,130,246,0.6)]" : "border-[var(--color-border-glow)] bg-[var(--color-bg-input)]",
       ].join(" ")}>
         {selected && (
           <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
