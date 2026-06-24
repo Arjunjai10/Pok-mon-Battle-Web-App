@@ -14,6 +14,10 @@ export default function Lobby() {
   const [copied, setCopied] = useState(false);
   const [vsData, setVsData] = useState(null);
 
+  const [format, setFormat] = useState("1v1");
+  const [lobbyPlayers, setLobbyPlayers] = useState([]);
+  const [isOwner, setIsOwner] = useState(false);
+
   const [showWakeMessage, setShowWakeMessage] = useState(false);
 
   // Refs for VS Screen skip
@@ -52,17 +56,25 @@ export default function Lobby() {
   useEffect(() => {
     if (!socket) return;
 
-    function handleRoomCreated({ code }) {
+    function handleRoomCreated({ code, format: roomFormat }) {
       setMyCode(code);
       setIsWaiting(true);
       setError("");
-      sessionStorage.setItem("poke-room-code", code); // Save room code for reconnects
+      setFormat(roomFormat);
+      setIsOwner(true);
+      setLobbyPlayers([{ key: "p1", name: "You (Owner)", isOwner: true }]);
+      sessionStorage.setItem("poke-room-code", code);
+    }
+
+    function handleLobbyUpdate({ players }) {
+      setLobbyPlayers(players);
+      setIsWaiting(true); // If we just joined and got an update, we are waiting
     }
 
     function handleBattleStart({ playerKey, state }) {
       battleStateRef.current = state;
       battleKeyRef.current = playerKey;
-      setVsData({ me: state.me, opponent: state.opponent });
+      setVsData({ me: state.me, opponents: state.opponents });
       
       vsTimeoutRef.current = setTimeout(() => {
         skipVsScreen();
@@ -71,20 +83,22 @@ export default function Lobby() {
 
     function handleError({ message }) {
       setError(message);
-      setIsWaiting(false);
+      if (!myCode) setIsWaiting(false);
     }
 
     socket.on("room-created", handleRoomCreated);
+    socket.on("lobby-update", handleLobbyUpdate);
     socket.on("battle-start", handleBattleStart);
     socket.on("error", handleError);
 
     return () => {
       socket.off("room-created", handleRoomCreated);
+      socket.off("lobby-update", handleLobbyUpdate);
       socket.off("battle-start", handleBattleStart);
       socket.off("error", handleError);
       if (vsTimeoutRef.current) clearTimeout(vsTimeoutRef.current);
     };
-  }, [socket, navigate]);
+  }, [socket, navigate, myCode]);
 
   const skipVsScreen = () => {
     if (vsTimeoutRef.current) {
@@ -105,7 +119,8 @@ export default function Lobby() {
   const handleCreateRoom = () => {
     if (!socket || !team) return;
     const sessionId = sessionStorage.getItem("poke-session-id");
-    socket.emit("create-room", { team, sessionId });
+    const playerName = "Trainer " + Math.floor(Math.random() * 1000);
+    socket.emit("create-room", { team, sessionId, format, playerName });
   };
 
   const handleJoinRoom = (e) => {
@@ -113,8 +128,15 @@ export default function Lobby() {
     if (!socket || !team || !joinCode.trim()) return;
     const sessionId = sessionStorage.getItem("poke-session-id");
     const code = joinCode.trim();
+    const playerName = "Trainer " + Math.floor(Math.random() * 1000);
     sessionStorage.setItem("poke-room-code", code);
-    socket.emit("join-room", { code, team, sessionId });
+    setMyCode(code); // Speculatively set so UI shows waiting screen
+    socket.emit("join-room", { code, team, sessionId, playerName });
+  };
+
+  const handleStartBattle = () => {
+    if (!socket || !myCode) return;
+    socket.emit("start-battle", { code: myCode });
   };
 
   if (!team) return null;
@@ -162,6 +184,29 @@ export default function Lobby() {
 
         {!isWaiting ? (
           <div className="space-y-6">
+            {/* Format Selection */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs text-[var(--color-text-secondary)] font-bold uppercase tracking-widest text-center">Battle Format</label>
+              <div className="flex gap-2 justify-center">
+                <button
+                  onClick={() => setFormat("1v1")}
+                  className={`flex-1 py-2 rounded-xl font-black uppercase text-sm border-4 transition-all shadow-sm ${
+                    format === "1v1" ? "bg-[var(--color-primary)] text-white border-blue-700 shadow-[0_4px_0_#1d4ed8]" : "bg-[var(--color-bg-panel)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:-translate-y-1 hover:shadow-[0_4px_0_var(--color-border)]"
+                  }`}
+                >
+                  1v1
+                </button>
+                <button
+                  onClick={() => setFormat("ffa")}
+                  className={`flex-1 py-2 rounded-xl font-black uppercase text-sm border-4 transition-all shadow-sm ${
+                    format === "ffa" ? "bg-[var(--color-primary)] text-white border-blue-700 shadow-[0_4px_0_#1d4ed8]" : "bg-[var(--color-bg-panel)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:-translate-y-1 hover:shadow-[0_4px_0_var(--color-border)]"
+                  }`}
+                >
+                  FFA (Up to 5)
+                </button>
+              </div>
+            </div>
+
             {/* Create Room */}
             <div className="flex flex-col gap-2">
               <button 
@@ -205,12 +250,15 @@ export default function Lobby() {
           </div>
         ) : (
           <div className="flex flex-col items-center py-6 gap-6 text-center animate-fade-in">
-            <div className="relative w-16 h-16">
-              <div className="absolute inset-0 border-8 border-[var(--color-border)] rounded-full"></div>
-              <div className="absolute inset-0 border-8 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin"></div>
-            </div>
+            {format === "1v1" ? (
+              <div className="relative w-16 h-16">
+                <div className="absolute inset-0 border-8 border-[var(--color-border)] rounded-full"></div>
+                <div className="absolute inset-0 border-8 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : null}
+
             <div>
-              <p className="text-[var(--color-text-secondary)] text-sm font-black tracking-wider uppercase mb-2">Waiting for opponent...</p>
+              <p className="text-[var(--color-text-secondary)] text-sm font-black tracking-wider uppercase mb-2">Waiting in Lobby...</p>
               <p className="text-[var(--color-text-muted)] text-xs font-bold mb-2 uppercase tracking-widest">Share this code:</p>
               <button 
                 onClick={() => {
@@ -229,6 +277,30 @@ export default function Lobby() {
                 </div>
               </button>
             </div>
+
+            {/* FFA Player List */}
+            {format === "ffa" && (
+              <div className="w-full text-left">
+                <h3 className="text-sm font-black text-[var(--color-text-primary)] uppercase tracking-wider mb-2">Players Joined:</h3>
+                <ul className="space-y-2">
+                  {lobbyPlayers.map((p, idx) => (
+                    <li key={idx} className="bg-[var(--color-bg-panel)] border-2 border-[var(--color-border)] p-2 rounded-lg font-bold text-sm text-[var(--color-text-secondary)]">
+                      {p.name} {p.isOwner && "(Owner)"} {p.key === battleKeyRef.current && "(You)"}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {isOwner && format === "ffa" && lobbyPlayers.length >= 2 && (
+               <button 
+                 onClick={handleStartBattle}
+                 className="w-full py-3 bg-[var(--color-success)] border-4 border-green-700 text-white font-black uppercase tracking-widest rounded-2xl transition-all shadow-[0_4px_0_#15803d] hover:-translate-y-1 hover:shadow-[0_6px_0_#15803d] active:translate-y-1 active:shadow-none"
+               >
+                 Start Battle
+               </button>
+            )}
+
             <button 
               onClick={() => {
                 socket.disconnect(); // Disconnects and leaves the room
@@ -258,37 +330,59 @@ export default function Lobby() {
           <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_48%,white_49%,white_51%,transparent_52%)] opacity-50"></div>
           <div className="absolute inset-0 bg-[linear-gradient(-45deg,transparent_48%,white_49%,white_51%,transparent_52%)] opacity-50"></div>
 
-          <div className="text-8xl font-display font-black text-white mb-12 tracking-[0.1em] drop-shadow-[0_10px_0_var(--color-danger)] z-10 italic animate-bounce-in transform -skew-x-12 border-4 border-black px-8 py-2 bg-black rounded-3xl">
-            VS
-          </div>
-          
-          <div className="flex w-full max-w-5xl justify-between items-center px-4 sm:px-16 z-10">
-            {/* Player 1 */}
-            <div className="flex flex-col items-center animate-slide-in-left">
-              <div className="relative">
-                <div className="absolute inset-0 bg-white rounded-full blur-2xl opacity-60 animate-pulse"></div>
-                <img src={vsData.me.active.spriteUrl} alt="You" className="w-40 h-40 sm:w-64 sm:h-64 object-contain relative z-10 drop-shadow-[0_10px_0_rgba(0,0,0,0.2)] hover:scale-125 transition-transform duration-500 animate-float" />
+          <div className="relative z-10 flex flex-col items-center w-full max-w-6xl">
+            
+            {/* YOU */}
+            <div className="w-full max-w-md transform translate-y-8 animate-slide-in-bottom">
+              <div className="bg-[var(--color-primary)] border-8 border-white p-6 shadow-2xl relative overflow-visible transform rotate-3">
+                <div className="absolute -top-4 -left-4 bg-[var(--color-accent)] text-[var(--color-bg-deep)] font-black uppercase tracking-widest px-4 py-1 text-sm border-4 border-[var(--color-bg-deep)] shadow-[4px_4px_0_var(--color-bg-deep)] transform -rotate-6">
+                  You
+                </div>
+                <img 
+                  src={vsData.me.active.spriteUrl} 
+                  alt="My active Pokémon" 
+                  className="w-48 h-48 mx-auto drop-shadow-[0_0_15px_rgba(255,255,255,0.8)] filter brightness-110 contrast-125"
+                  style={{ imageRendering: 'pixelated' }}
+                />
               </div>
-              <div className="mt-8 bg-white px-6 py-2 rounded-2xl border-4 border-[var(--color-primary)] font-display font-black text-3xl tracking-wide text-[var(--color-primary)] drop-shadow-[0_4px_0_var(--color-primary)] transform -rotate-3">{vsData.me.active.name}</div>
-              <div className="text-sm font-black text-white bg-black px-4 py-1 rounded-full border-2 border-white uppercase tracking-[0.3em] mt-4 shadow-lg">You</div>
             </div>
 
-            {/* Player 2 */}
-            <div className="flex flex-col items-center animate-slide-in-right">
-              <div className="relative">
-                <div className="absolute inset-0 bg-white rounded-full blur-2xl opacity-60 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-                <img src={vsData.opponent.active.spriteUrl} alt="Opponent" className="w-40 h-40 sm:w-64 sm:h-64 object-contain relative z-10 drop-shadow-[0_10px_0_rgba(0,0,0,0.2)] hover:scale-125 transition-transform duration-500 animate-float" />
+            {/* VS Graphic */}
+            <div className="relative z-20 my-4 transform animate-scale-in">
+              <div className="text-8xl font-black italic tracking-tighter drop-shadow-[0_10px_0_rgba(0,0,0,0.5)]">
+                <span className="text-[var(--color-primary)]">V</span>
+                <span className="text-[var(--color-accent)] -ml-4">S</span>
               </div>
-              <div className="mt-8 bg-white px-6 py-2 rounded-2xl border-4 border-[var(--color-danger)] font-display font-black text-3xl tracking-wide text-[var(--color-danger)] drop-shadow-[0_4px_0_var(--color-danger)] transform rotate-3">{vsData.opponent.active.name}</div>
-              <div className="text-sm font-black text-white bg-black px-4 py-1 rounded-full border-2 border-white uppercase tracking-[0.3em] mt-4 shadow-lg">Opponent</div>
+              <div className="absolute inset-0 text-8xl font-black italic tracking-tighter text-transparent stroke-black stroke-2" style={{ WebkitTextStroke: '4px white' }}>
+                <span className="text-[var(--color-primary)]">V</span>
+                <span className="text-[var(--color-accent)] -ml-4">S</span>
+              </div>
             </div>
-          </div>
-          
-          <div className="absolute bottom-12 bg-white text-black px-8 py-3 rounded-full border-4 border-black text-lg font-black tracking-[0.2em] uppercase animate-bounce-in shadow-[0_6px_0_black] z-10">
-            Battle starting...
+
+            {/* OPPONENTS */}
+            <div className="flex gap-4 transform -translate-y-8 animate-slide-in-top flex-wrap justify-center">
+              {vsData.opponents.map(opp => (
+                <div key={opp.playerKey} className="bg-[var(--color-danger)] border-8 border-white p-6 shadow-2xl relative overflow-visible transform -rotate-3 mb-4">
+                  <div className="absolute -top-4 -right-4 bg-[var(--color-accent)] text-[var(--color-bg-deep)] font-black uppercase tracking-widest px-4 py-1 text-sm border-4 border-[var(--color-bg-deep)] shadow-[4px_4px_0_var(--color-bg-deep)] transform rotate-6">
+                    {opp.name}
+                  </div>
+                  <img 
+                    src={opp.active.spriteUrl} 
+                    alt="Opponent's active Pokémon" 
+                    className="w-48 h-48 mx-auto drop-shadow-[0_0_15px_rgba(255,255,255,0.8)] filter brightness-110 contrast-125"
+                    style={{ imageRendering: 'pixelated' }}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-12 text-white font-black uppercase tracking-widest text-sm animate-pulse drop-shadow-md">
+              Tap anywhere to battle
+            </p>
           </div>
         </div>
       )}
+
     </div>
   );
 }

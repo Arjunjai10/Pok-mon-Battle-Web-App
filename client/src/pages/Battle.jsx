@@ -17,8 +17,9 @@ export default function Battle() {
   const [floatingEvents, setFloatingEvents] = useState([]);
   const [lockedAction, setLockedAction] = useState(null);
   const [isReconnecting, setIsReconnecting] = useState(false);
+  
+  const [pendingMove, setPendingMove] = useState(null);
 
-  // Removes a floating event after its animation finishes
   const removeFloatingEvent = useCallback((id) => {
     setFloatingEvents((prev) => prev.filter((e) => e.id !== id));
   }, []);
@@ -31,7 +32,6 @@ export default function Battle() {
     if (!socket) return;
 
     function handleActionReceived() {
-      // Local optimistic update — Phase 4 says the server state will soon catch up
       setGameState((prev) => ({ ...prev, phase: "waiting" }));
     }
 
@@ -43,6 +43,7 @@ export default function Battle() {
 
     function handleTurnResult({ state, log, events }) {
       setLockedAction(null);
+      setPendingMove(null);
       if (log && log.length > 0) {
         setLogEntries((prev) => [...prev, ...log]);
       }
@@ -50,25 +51,25 @@ export default function Battle() {
         const timedEvents = events.map((e, idx) => ({ 
           ...e, 
           id: Math.random().toString(36).substring(2, 9),
-          delay: idx * 1200 // Stagger by 1.2s each
+          delay: idx * 1200 
         }));
         setFloatingEvents((prev) => [...prev, ...timedEvents]);
 
-        // Stagger HP updates visually before setting final state
         events.forEach((event, idx) => {
           setTimeout(() => {
             if (event.type === "damage") {
               setGameState(prev => {
                 if (!prev) return prev;
                 const next = { ...prev };
-                if (next[event.targetKey]) {
-                  next[event.targetKey] = {
-                    ...next[event.targetKey],
-                    active: {
-                      ...next[event.targetKey].active,
-                      currentHp: Math.max(0, next[event.targetKey].active.currentHp - event.amount)
-                    }
-                  };
+                if (event.targetKey === next.me.id || event.targetKey === next.me.playerKey) {
+                    next.me = { ...next.me, active: { ...next.me.active, currentHp: Math.max(0, next.me.active.currentHp - event.amount) } };
+                } else if (next.opponents) {
+                    next.opponents = next.opponents.map(opp => {
+                        if (opp.playerKey === event.targetKey || opp.id === event.targetKey) {
+                            return { ...opp, active: { ...opp.active, currentHp: Math.max(0, opp.active.currentHp - event.amount) } };
+                        }
+                        return opp;
+                    });
                 }
                 return next;
               });
@@ -89,6 +90,7 @@ export default function Battle() {
     function handleForceSwitchResult({ state, log }) {
       setGameState(state);
       setLockedAction(null);
+      setPendingMove(null);
       if (log && log.length > 0) {
         setLogEntries((prev) => [...prev, ...log]);
       }
@@ -103,6 +105,7 @@ export default function Battle() {
       setOpponentReconnectingMsg(null);
       setModalMessage(null);
       setIsReconnecting(false);
+      setPendingMove(null);
       if (message) {
         setLogEntries((prev) => [...prev, message]);
       }
@@ -118,7 +121,6 @@ export default function Battle() {
         setLogEntries((prev) => [...prev, ...log]);
       }
       setRematchWaiting(false);
-      // state.phase will also be 'battle-over'
     }
 
     function handleRematchWaiting() {
@@ -163,7 +165,6 @@ export default function Battle() {
     };
   }, [socket, gameState, navigate]);
 
-  // Auto-reconnect flow
   useEffect(() => {
     if (!isConnected || !socket) return;
     const code = sessionStorage.getItem("poke-room-code");
@@ -176,14 +177,37 @@ export default function Battle() {
 
   if (!gameState) return null;
 
-  const { me, opponent, phase, turn, forceSwitchBench } = gameState;
+  const { me, opponents = [], phase, turn, forceSwitchBench } = gameState;
 
   const handleMove = (move) => {
-    setLockedAction({ type: "move", move });
-    socket.emit("submit-action", { type: "move", move });
+    const isMultiTarget = ["earthquake", "surf", "blizzard", "thunder", "self-destruct", "explosion"].includes(move.name.toLowerCase());
+    
+    if (isMultiTarget) {
+       setLockedAction({ type: "move", move });
+       socket.emit("submit-action", { type: "move", move, targetId: "all" });
+    } else {
+       const aliveOpponents = opponents.filter(o => o.active.currentHp > 0);
+       if (aliveOpponents.length === 1) {
+         setLockedAction({ type: "move", move });
+         socket.emit("submit-action", { type: "move", move, targetId: aliveOpponents[0].playerKey });
+       } else if (aliveOpponents.length === 0) {
+         setLockedAction({ type: "move", move });
+         socket.emit("submit-action", { type: "move", move });
+       } else {
+         setPendingMove(move);
+       }
+    }
+  };
+
+  const handleSelectTarget = (targetId) => {
+    if (!pendingMove) return;
+    setLockedAction({ type: "move", move: pendingMove });
+    socket.emit("submit-action", { type: "move", move: pendingMove, targetId });
+    setPendingMove(null);
   };
 
   const handleSwitch = (switchToIndex) => {
+    setPendingMove(null);
     if (phase === "force-switch") {
       socket.emit("submit-force-switch", { switchTo: switchToIndex });
     } else {
@@ -276,12 +300,23 @@ export default function Battle() {
     );
   };
 
-  const renderActivePokemon = (p, isOpponent) => {
-    const targetKey = isOpponent ? "opponent" : "me";
-    const myEvents = floatingEvents.filter(e => e.targetKey === targetKey);
+  const renderActivePokemon = (p, isOpponent, playerKey, playerName) => {
+    const targetKey = playerKey || "me";
+    const myEvents = floatingEvents.filter(e => e.targetKey === targetKey || e.targetKey === (isOpponent ? opponents.find(o=>o.playerKey===playerKey)?.id : me.id));
 
     return (
-      <div className={`flex flex-col sm:flex-row items-center sm:items-end gap-2 sm:gap-4 ${isOpponent ? "" : "sm:flex-row-reverse"}`}>
+      <div className={`relative flex flex-col sm:flex-row items-center sm:items-end gap-2 sm:gap-4 ${isOpponent ? "" : "sm:flex-row-reverse"}`}>
+        
+        {/* Target Selection Overlay */}
+        {pendingMove && isOpponent && p.currentHp > 0 && (
+          <button 
+            onClick={() => handleSelectTarget(playerKey)}
+            className="absolute inset-0 bg-red-500/30 border-4 border-red-500 z-[100] cursor-pointer animate-pulse rounded-2xl flex items-center justify-center text-white font-black uppercase text-xl shadow-[0_0_15px_red] m-[-8px]"
+          >
+            Target
+          </button>
+        )}
+
         <div className="relative w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0">
           <img 
             src={p.spriteUrl} 
@@ -293,15 +328,14 @@ export default function Battle() {
         </div>
         <div className={`group relative cursor-help bg-white border-4 border-[var(--color-text-primary)] rounded-2xl p-3 w-full sm:w-auto sm:flex-1 max-w-[240px] transition-opacity duration-500 shadow-[0_6px_0_var(--color-text-primary)] ${p.currentHp <= 0 ? "opacity-30" : ""}`}>
           <div className="flex justify-between items-baseline mb-1">
-            <div className="font-bold text-[var(--color-text-primary)] text-sm sm:text-base">
-              {p.name}
+            <div className="font-bold text-[var(--color-text-primary)] text-sm sm:text-base truncate">
+              {playerName ? `${playerName}'s ` : ''}{p.name}
             </div>
-            <div className="text-[10px] sm:text-xs font-mono text-[var(--color-text-muted)]">Lv.100</div>
+            <div className="text-[10px] sm:text-xs font-mono text-[var(--color-text-muted)] ml-1 flex-shrink-0">Lv.100</div>
           </div>
           <HpBar current={p.currentHp} max={p.maxHp} />
           {renderStatStages(p.statStages)}
           
-          {/* Pokemon Tooltip */}
           {p.currentStats && (
             <div className={`hidden group-hover:block absolute ${isOpponent ? 'top-full left-0 mt-2' : 'bottom-full right-0 mb-2'} w-64 p-3 bg-[var(--color-bg-card)] border-4 border-[var(--color-text-primary)] rounded-2xl shadow-[0_6px_0_var(--color-text-primary)] text-left z-[100] text-xs cursor-default`}>
               <div className="font-bold text-[var(--color-text-primary)] mb-1 text-sm flex justify-between items-center">
@@ -335,10 +369,10 @@ export default function Battle() {
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-[var(--color-bg-deep)] p-2 sm:p-4 max-w-6xl mx-auto gap-2 sm:gap-4 font-body">
+    <div className="flex flex-col h-[100dvh] bg-[var(--color-bg-deep)] p-2 sm:p-4 max-w-[1400px] mx-auto gap-2 sm:gap-4 font-body">
       
       {/* Header */}
-      <div className="flex justify-between items-center bg-white border-4 border-[var(--color-text-primary)] rounded-xl px-4 py-2 flex-shrink-0 shadow-[0_4px_0_var(--color-text-primary)]">
+      <div className="flex justify-between items-center bg-white border-4 border-[var(--color-text-primary)] rounded-xl px-4 py-2 flex-shrink-0 shadow-[0_4px_0_var(--color-text-primary)] flex-wrap">
         <div className="flex items-center gap-4">
           <div className="text-sm font-bold text-[var(--color-text-secondary)]">
             Turn {turn}
@@ -355,9 +389,13 @@ export default function Battle() {
             Run
           </button>
         </div>
-        <div className="flex gap-1">
-          {opponent.bench.map((b, i) => (
-            <div key={i} className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full ${b.currentHp > 0 ? "bg-[var(--color-primary)]" : "bg-[var(--color-danger)] opacity-50"}`} />
+        <div className="flex gap-4">
+          {opponents.map(opp => (
+            <div key={opp.playerKey} className="flex gap-1" title={`${opp.name}'s Bench`}>
+              {opp.bench.map((b, i) => (
+                <div key={i} className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full ${b.currentHp > 0 ? "bg-[var(--color-primary)]" : "bg-[var(--color-danger)] opacity-50"}`} />
+              ))}
+            </div>
           ))}
         </div>
       </div>
@@ -370,28 +408,44 @@ export default function Battle() {
           
           {/* Battle Field */}
           <div className="flex-1 bg-gradient-to-b from-green-300 to-green-500 border-4 border-[var(--color-text-primary)] rounded-3xl relative p-4 sm:p-6 flex flex-col justify-between overflow-y-auto shadow-[inset_0_10px_20px_rgba(0,0,0,0.1)]">
-            {/* Environment Decor */}
             <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(ellipse_at_center,_#ffffff_0%,_transparent_70%)]"></div>
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8Y2lyY2xlIGN4PSI0IiBjeT0iNCIgcj0iMiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIvPgo8L3N2Zz4=')] opacity-50"></div>
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8Y2lyY2xlIGN4PSI0IiBjeT0iNCIgcj0iMiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIvPgo8L3N2Zz4=')] opacity-50 pointer-events-none"></div>
             
-            {/* Opponent (Top Right) */}
-            <div className="self-end w-full flex justify-end">
-              {renderActivePokemon(opponent.active, true)}
+            {/* Opponents (Top) */}
+            <div className="w-full flex flex-wrap justify-center sm:justify-end gap-4 relative z-10">
+              {opponents.map(opp => (
+                <div key={opp.playerKey} className={`${opponents.length > 2 ? 'scale-75 origin-top-right' : ''}`}>
+                  {renderActivePokemon(opp.active, true, opp.playerKey, opp.name)}
+                </div>
+              ))}
             </div>
             
             {/* Player (Bottom Left) */}
-            <div className="self-start w-full mt-4 sm:mt-8">
-              {renderActivePokemon(me.active, false)}
+            <div className="self-start w-full mt-4 sm:mt-8 relative z-10">
+              {renderActivePokemon(me.active, false, null)}
             </div>
           </div>
 
           {/* Controls Area */}
-          <div className="bg-white border-4 border-[var(--color-text-primary)] rounded-3xl p-3 sm:p-4 flex-shrink-0 min-h-[160px] lg:min-h-[14rem] flex flex-col justify-center shadow-[0_8px_0_var(--color-text-primary)]">
+          <div className="bg-white border-4 border-[var(--color-text-primary)] rounded-3xl p-3 sm:p-4 flex-shrink-0 min-h-[160px] lg:min-h-[14rem] flex flex-col justify-center shadow-[0_8px_0_var(--color-text-primary)] relative">
+            
+            {pendingMove && (
+              <div className="absolute inset-0 bg-white/90 backdrop-blur z-20 rounded-2xl flex flex-col items-center justify-center border-4 border-red-500 gap-4">
+                <span className="font-black text-xl text-[var(--color-danger)] uppercase">Select Target for {pendingMove.name}</span>
+                <button 
+                  onClick={() => setPendingMove(null)}
+                  className="px-6 py-2 bg-[var(--color-bg-deep)] text-[var(--color-text-primary)] font-bold border-2 border-[var(--color-border)] rounded-xl"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
             {phase === "waiting" && (
               <div className="flex flex-col h-full items-center justify-center text-[var(--color-text-secondary)] gap-3">
                 <div className="flex items-center gap-2 animate-pulse">
                   <div className="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)]"></div>
-                  <span className="font-medium">Waiting for opponent...</span>
+                  <span className="font-medium">Waiting for other players...</span>
                 </div>
                 {lockedAction && (
                   <div className="text-xs text-[var(--color-text-muted)] bg-[var(--color-bg-deep)] px-3 py-1.5 rounded-full border border-[var(--color-border)]">
@@ -402,8 +456,8 @@ export default function Battle() {
             )}
 
             {phase === "picking" && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 h-full gap-4 overflow-y-auto lg:overflow-visible">
-                {/* Moves (Left half on desktop) */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 h-full gap-4 overflow-y-auto xl:overflow-visible">
+                {/* Moves */}
                 <div className="flex flex-col">
                   <span className="text-sm font-bold text-[var(--color-text-primary)] mb-2">Attack:</span>
                   <div className="grid grid-cols-2 gap-2 flex-1">
@@ -412,10 +466,10 @@ export default function Battle() {
                         key={i}
                         onClick={() => handleMove(m)}
                         disabled={m.currentPp <= 0}
-                        className="group relative flex flex-col items-start justify-center px-2 sm:px-3 py-2 rounded-xl disabled:opacity-50 transition-all border-4 move-btn cursor-pointer hover:-translate-y-1 active:translate-y-1 active:shadow-none"
+                        className="group relative flex flex-col items-start justify-center px-2 sm:px-3 py-2 rounded-xl disabled:opacity-50 transition-all border-4 move-btn cursor-pointer hover:-translate-y-1 active:translate-y-1 active:shadow-none bg-white"
                         style={{
                           borderColor: `var(--color-type-${m.type.toLowerCase()})`,
-                          backgroundColor: `color-mix(in srgb, var(--color-type-${m.type.toLowerCase()}) 15%, #ffffff)`,
+                          backgroundColor: `color-mix(in srgb, var(--color-type-${m.type.toLowerCase()}) 10%, #ffffff)`,
                           boxShadow: m.currentPp > 0 ? `0 4px 0 var(--color-type-${m.type.toLowerCase()})` : 'none'
                         }}
                       >
@@ -428,7 +482,7 @@ export default function Battle() {
                         </div>
 
                         {/* Move Tooltip */}
-                        <div className="hidden lg:group-hover:block absolute bottom-full left-0 mb-2 w-56 p-2 bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded shadow-2xl text-left z-[100] text-xs cursor-default">
+                        <div className="hidden xl:group-hover:block absolute bottom-full left-0 mb-2 w-56 p-2 bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded shadow-2xl text-left z-[100] text-xs cursor-default">
                           <div className="font-bold text-[var(--color-text-primary)] mb-1.5 flex items-center gap-2">
                             <span className="px-1.5 py-0.5 rounded uppercase tracking-wider text-[9px] text-white" style={{ backgroundColor: `var(--color-type-${m.type.toLowerCase()})` }}>{m.type}</span>
                             {m.damageClass && <span className="text-[var(--color-text-muted)] capitalize text-[10px]">{m.damageClass}</span>}
@@ -445,10 +499,10 @@ export default function Battle() {
                   </div>
                 </div>
 
-                {/* Switch Bench (Right half on desktop) */}
-                <div className="flex flex-col lg:border-l border-[var(--color-border)] lg:pl-4">
+                {/* Switch Bench */}
+                <div className="flex flex-col xl:border-l border-[var(--color-border)] xl:pl-4">
                   <span className="text-sm font-bold text-[var(--color-text-primary)] mb-2">Switch:</span>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-2">
                     {me.bench.map((b) => (
                       <button
                         key={b.benchIndex}
@@ -477,7 +531,7 @@ export default function Battle() {
 
       </div>
 
-      {/* Disconnect / Reconnect Modals */}
+      {/* Modals */}
       {!isConnected && !modalMessage && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-yellow-500/90 text-yellow-950 px-6 py-2 rounded-full font-bold shadow-lg z-50 flex items-center gap-2 animate-bounce">
           <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
@@ -485,7 +539,6 @@ export default function Battle() {
         </div>
       )}
 
-      {/* Opponent Reconnecting Modal */}
       {opponentReconnectingMsg && (
         <div className="absolute inset-0 z-40 bg-[var(--color-bg-deep)]/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="glass-card p-6 text-center max-w-sm w-full animate-fade-in border-[var(--color-warning)]">
@@ -498,7 +551,6 @@ export default function Battle() {
         </div>
       )}
 
-      {/* Force Switch Modal Drawer */}
       {phase === "force-switch" && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-[var(--color-bg-deep)]/60 backdrop-blur-sm p-2 sm:p-4 animate-fade-in">
           <div className="w-full max-w-xl bg-white border-4 border-[var(--color-text-primary)] rounded-t-3xl p-4 sm:p-6 shadow-[0_-10px_0_var(--color-text-primary)] animate-slide-up pb-10">
@@ -527,7 +579,7 @@ export default function Battle() {
         <div className="fixed inset-0 bg-[var(--color-bg-deep)]/80 flex items-center justify-center z-50 p-4">
           <div className="glass-card p-8 max-w-sm w-full text-center space-y-6">
             <div className="text-4xl">🔌</div>
-            <h2 className="text-xl font-black text-[var(--color-text-primary)] uppercase tracking-wider">Connection Lost</h2>
+            <h2 className="text-xl font-black text-[var(--color-text-primary)] uppercase tracking-wider">Battle Ended</h2>
             <p className="text-[var(--color-text-secondary)] font-bold">{modalMessage}</p>
             <button 
               onClick={() => { socket.disconnect(); navigate("/build"); }}
