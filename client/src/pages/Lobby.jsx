@@ -37,7 +37,7 @@ export default function Lobby() {
   useEffect(() => {
     const saved = sessionStorage.getItem("poke-team-final");
     if (!saved) {
-      navigate("/");
+      navigate("/build");
       return;
     }
     setTeam(JSON.parse(saved));
