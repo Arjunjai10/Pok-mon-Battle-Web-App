@@ -303,7 +303,7 @@ export default function Battle() {
           
           {/* Pokemon Tooltip */}
           {p.currentStats && (
-            <div className={`hidden group-hover:block absolute ${isOpponent ? 'top-full left-0 mt-2' : 'bottom-full right-0 mb-2'} w-64 p-3 bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded shadow-2xl text-left z-[100] text-xs cursor-default`}>
+            <div className={`hidden group-hover:block absolute ${isOpponent ? 'top-full left-0 mt-2' : 'bottom-full right-0 mb-2'} w-64 p-3 bg-[var(--color-bg-card)] border-4 border-[var(--color-text-primary)] rounded-2xl shadow-[0_6px_0_var(--color-text-primary)] text-left z-[100] text-xs cursor-default`}>
               <div className="font-bold text-[var(--color-text-primary)] mb-1 text-sm flex justify-between items-center">
                 <span>{p.name}</span>
                 <div className="flex gap-1">
@@ -440,7 +440,7 @@ export default function Battle() {
                         key={b.benchIndex}
                         onClick={() => handleSwitch(b.benchIndex)}
                         disabled={b.currentHp <= 0}
-                        className="flex items-center gap-2 p-1.5 bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded disabled:opacity-50 transition-colors text-left bench-btn cursor-pointer"
+                        className="flex items-center gap-2 p-1.5 bg-[var(--color-bg-panel)] border-2 border-[var(--color-border)] rounded-xl disabled:opacity-50 transition-all text-left bench-btn cursor-pointer"
                       >
                         <img src={b.spriteUrl} alt={b.name} className="w-8 h-8 object-contain drop-shadow-md" />
                         <div className="flex-1 min-w-0">
@@ -487,17 +487,17 @@ export default function Battle() {
       {/* Force Switch Modal Drawer */}
       {phase === "force-switch" && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-[var(--color-bg-deep)]/60 backdrop-blur-sm p-2 sm:p-4 animate-fade-in">
-          <div className="w-full max-w-xl bg-[var(--color-bg-deep)] border border-[var(--color-border)] rounded-t-xl p-4 sm:p-6 shadow-2xl animate-slide-up pb-10">
-            <div className="text-xl font-bold text-[var(--color-danger)] mb-4 text-center">Your Pokémon fainted! Choose replacement:</div>
+          <div className="w-full max-w-xl bg-white border-4 border-[var(--color-text-primary)] rounded-t-3xl p-4 sm:p-6 shadow-[0_-10px_0_var(--color-text-primary)] animate-slide-up pb-10">
+            <div className="text-xl font-black text-[var(--color-danger)] mb-4 text-center uppercase tracking-widest">Your Pokémon fainted! Choose replacement:</div>
             <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
               {forceSwitchBench.map((b) => (
                 <button
                   key={b.benchIndex}
                   onClick={() => handleSwitch(b.benchIndex)}
                   disabled={b.currentHp <= 0}
-                  className="flex items-center gap-4 p-4 bg-[var(--color-bg-panel)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] rounded-lg disabled:opacity-50 transition-colors text-left"
+                  className="flex items-center gap-4 p-4 bg-[var(--color-bg-panel)] hover:bg-[var(--color-bg-hover)] border-4 border-[var(--color-border)] rounded-2xl disabled:opacity-50 transition-all hover:-translate-y-1 hover:shadow-[0_4px_0_var(--color-border)] active:translate-y-1 active:shadow-none text-left"
                 >
-                  <img src={b.spriteUrl} alt={b.name} className="w-14 h-14 object-contain" />
+                  <img src={b.spriteUrl} alt={b.name} className="w-14 h-14 object-contain drop-shadow-md" />
                   <div className="flex-1">
                     <div className="font-bold text-[var(--color-text-primary)] text-lg mb-1">{b.name}</div>
                     <HpBar current={b.currentHp} max={b.maxHp} size="md" />
@@ -513,11 +513,11 @@ export default function Battle() {
         <div className="fixed inset-0 bg-[var(--color-bg-deep)]/80 flex items-center justify-center z-50 p-4">
           <div className="glass-card p-8 max-w-sm w-full text-center space-y-6">
             <div className="text-4xl">🔌</div>
-            <h2 className="text-xl font-bold text-[var(--color-text-primary)]">Connection Lost</h2>
-            <p className="text-[var(--color-text-secondary)]">{modalMessage}</p>
+            <h2 className="text-xl font-black text-[var(--color-text-primary)] uppercase tracking-wider">Connection Lost</h2>
+            <p className="text-[var(--color-text-secondary)] font-bold">{modalMessage}</p>
             <button 
               onClick={() => { socket.disconnect(); navigate("/"); }}
-              className="w-full py-2 bg-[var(--color-primary)] text-white rounded font-bold hover:bg-[var(--color-primary-light)] transition-colors"
+              className="w-full py-3 bg-[var(--color-danger)] text-white rounded-2xl font-black uppercase tracking-widest border-4 border-red-700 shadow-[0_6px_0_#991b1b] hover:-translate-y-1 hover:shadow-[0_8px_0_#991b1b] active:translate-y-2 active:shadow-none transition-all"
             >
               Return to Lobby
             </button>

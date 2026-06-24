@@ -23,13 +23,13 @@ export default function MoveButton({ move, selected, disabled, onClick, levelHin
       onClick={onClick}
       disabled={disabled && !selected}
       className={[
-        "w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-left transition-all duration-200 overflow-hidden relative",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]",
+        "move-btn w-full flex items-center gap-2 px-3 py-3 rounded-2xl text-left overflow-hidden relative",
+        "focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]",
         selected
-          ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10 shadow-[0_0_12px_rgba(59,130,246,0.2)] transform translate-x-1 z-10"
+          ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10 shadow-[0_4px_0_var(--color-primary)] transform translate-y-0 z-10"
           : disabled
-            ? "border-transparent bg-[var(--color-bg-panel)] opacity-30 cursor-not-allowed grayscale"
-            : "border-[var(--color-border)] bg-[var(--color-bg-panel)] hover:border-[var(--color-border-glow)] hover:bg-[var(--color-bg-hover)] hover:translate-x-1 hover:shadow-md",
+            ? "opacity-50 cursor-not-allowed grayscale shadow-none transform-none"
+            : "",
       ].join(" ")}
       aria-pressed={selected}
     >
