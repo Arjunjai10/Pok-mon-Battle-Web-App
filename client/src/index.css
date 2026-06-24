@@ -151,3 +151,28 @@ body {
   overflow-x: hidden;
   scrollbar-gutter: stable;
 }
+
+/* ── Interactive Buttons ── */
+.move-btn, .bench-btn {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.move-btn:hover:not(:disabled), .bench-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+.move-btn:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+
+.bench-btn:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+  border-color: var(--color-border-glow);
+}
+
+.move-btn:active:not(:disabled), .bench-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}

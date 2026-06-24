@@ -11,7 +11,6 @@ export default function Battle() {
 
   const [gameState, setGameState] = useState(location.state?.initialBattleState || null);
   const [logEntries, setLogEntries] = useState(["Battle started!"]);
-  const [uiView, setUiView] = useState("main"); // "main" | "fight" | "switch"
   const [modalMessage, setModalMessage] = useState(null);
   const [opponentReconnectingMsg, setOpponentReconnectingMsg] = useState(null);
   const [rematchWaiting, setRematchWaiting] = useState(false);
@@ -34,13 +33,11 @@ export default function Battle() {
     function handleActionReceived() {
       // Local optimistic update — Phase 4 says the server state will soon catch up
       setGameState((prev) => ({ ...prev, phase: "waiting" }));
-      setUiView("main");
     }
 
     function handleBattleStart({ state }) {
       setGameState(state);
       setLogEntries(["Battle started!"]);
-      setUiView("main");
       setRematchWaiting(false);
     }
 
@@ -82,12 +79,10 @@ export default function Battle() {
         const totalDelay = events.length * 1200 + 1000;
         setTimeout(() => {
           setGameState(state);
-          setUiView("main");
         }, totalDelay);
 
       } else {
         setGameState(state);
-        setUiView("main");
       }
     }
 
@@ -97,7 +92,6 @@ export default function Battle() {
       if (log && log.length > 0) {
         setLogEntries((prev) => [...prev, ...log]);
       }
-      setUiView("main");
     }
 
     function handleOpponentReconnecting({ message }) {
@@ -395,9 +389,9 @@ export default function Battle() {
             )}
 
             {phase === "picking" && (
-              <div className="flex flex-col lg:flex-row h-full gap-4 overflow-y-auto lg:overflow-visible">
+              <div className="grid grid-cols-1 lg:grid-cols-2 h-full gap-4 overflow-y-auto lg:overflow-visible">
                 {/* Moves (Left half on desktop) */}
-                <div className="flex-1 flex flex-col">
+                <div className="flex flex-col">
                   <span className="text-sm font-bold text-[var(--color-text-primary)] mb-2">Attack:</span>
                   <div className="grid grid-cols-2 gap-2 flex-1">
                     {me.active.moves.map((m, i) => (
@@ -405,7 +399,7 @@ export default function Battle() {
                         key={i}
                         onClick={() => handleMove(m)}
                         disabled={m.currentPp <= 0}
-                        className="group relative flex flex-col items-start justify-center px-2 sm:px-3 py-2 rounded disabled:opacity-50 transition-colors border"
+                        className="group relative flex flex-col items-start justify-center px-2 sm:px-3 py-2 rounded disabled:opacity-50 transition-colors border move-btn cursor-pointer"
                         style={{
                           borderColor: `var(--color-type-${m.type.toLowerCase()})`,
                           backgroundColor: `color-mix(in srgb, var(--color-type-${m.type.toLowerCase()}) 15%, var(--color-bg-panel))`,
@@ -438,15 +432,15 @@ export default function Battle() {
                 </div>
 
                 {/* Switch Bench (Right half on desktop) */}
-                <div className="flex-1 flex flex-col lg:border-l border-[var(--color-border)] lg:pl-4">
+                <div className="flex flex-col lg:border-l border-[var(--color-border)] lg:pl-4">
                   <span className="text-sm font-bold text-[var(--color-text-primary)] mb-2">Switch:</span>
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
                     {me.bench.map((b) => (
                       <button
                         key={b.benchIndex}
                         onClick={() => handleSwitch(b.benchIndex)}
                         disabled={b.currentHp <= 0}
-                        className="flex items-center gap-2 p-1.5 bg-[var(--color-bg-panel)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)] rounded disabled:opacity-50 transition-colors text-left"
+                        className="flex items-center gap-2 p-1.5 bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded disabled:opacity-50 transition-colors text-left bench-btn cursor-pointer"
                       >
                         <img src={b.spriteUrl} alt={b.name} className="w-8 h-8 object-contain drop-shadow-md" />
                         <div className="flex-1 min-w-0">
