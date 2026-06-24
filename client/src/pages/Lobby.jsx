@@ -366,13 +366,25 @@ export default function Lobby() {
 
             {/* OPPONENTS */}
             <div className="flex gap-4 transform -translate-y-8 animate-slide-in-top flex-wrap justify-center">
-              {vsData.opponents.map(opp => (
+              {vsData.opponents && vsData.opponents.map(opp => (
                 <div key={opp.playerKey} className="bg-[var(--color-danger)] border-8 border-white p-6 shadow-2xl relative overflow-visible transform -rotate-3 mb-4">
                   <div className="absolute -top-4 -right-4 bg-[var(--color-accent)] text-[var(--color-bg-deep)] font-black uppercase tracking-widest px-4 py-1 text-sm border-4 border-[var(--color-bg-deep)] shadow-[4px_4px_0_var(--color-bg-deep)] transform rotate-6">
                     {opp.name}
                   </div>
                   <img 
                     src={opp.active.spriteUrl} 
+                    alt="Opponent's active Pokémon" 
+                    className="w-32 h-32 md:w-48 md:h-48 mx-auto drop-shadow-[0_0_15px_rgba(255,255,255,0.8)] filter brightness-110 contrast-125 scale-x-[-1]"
+                    style={{ imageRendering: 'pixelated' }}
+                  />
+                </div>
+              ))}
+            </div>
+
+          </div>
+        </div>
+      )}
+    </div>
                     alt="Opponent's active Pokémon" 
                     className="w-48 h-48 mx-auto drop-shadow-[0_0_15px_rgba(255,255,255,0.8)] filter brightness-110 contrast-125"
                     style={{ imageRendering: 'pixelated' }}
