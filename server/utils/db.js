@@ -8,17 +8,22 @@ if (!fs.existsSync(usersFilePath)) {
   fs.writeFileSync(usersFilePath, JSON.stringify([]));
 }
 
+let memoryUsers = null;
+
 function getUsers() {
+  if (memoryUsers) return memoryUsers;
   try {
     const data = fs.readFileSync(usersFilePath, 'utf8');
-    return JSON.parse(data);
+    memoryUsers = JSON.parse(data);
   } catch (err) {
     console.error('Error reading users.json:', err);
-    return [];
+    memoryUsers = [];
   }
+  return memoryUsers;
 }
 
 function saveUsers(users) {
+  memoryUsers = users;
   try {
     fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
   } catch (err) {
