@@ -76,7 +76,14 @@ export function AuthProvider({ children }) {
       },
       body: JSON.stringify({ team })
     });
-    if (!res.ok) throw new Error('Failed to save team');
+    if (!res.ok) {
+      let msg = 'Failed to save team';
+      try {
+        const data = await res.json();
+        if (data.error) msg = data.error;
+      } catch (e) {}
+      throw new Error(msg);
+    }
   };
 
   const loadTeam = async () => {

@@ -37,7 +37,7 @@ const PORT = process.env.PORT || 3001;
 
 // Serve CORS headers for all HTTP routes
 app.use(cors({ origin: allowedOrigins }));
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 
 app.use("/data", express.static(path.join(__dirname, "data")));
 app.get("/api/health", (_req, res) => res.json({ status: "ok", phase: 5 }));
