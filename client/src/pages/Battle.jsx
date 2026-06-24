@@ -25,7 +25,7 @@ export default function Battle() {
 
   useEffect(() => {
     if (!gameState) {
-      navigate("/");
+      navigate("/build");
       return;
     }
     if (!socket) return;
@@ -530,7 +530,7 @@ export default function Battle() {
             <h2 className="text-xl font-black text-[var(--color-text-primary)] uppercase tracking-wider">Connection Lost</h2>
             <p className="text-[var(--color-text-secondary)] font-bold">{modalMessage}</p>
             <button 
-              onClick={() => { socket.disconnect(); navigate("/"); }}
+              onClick={() => { socket.disconnect(); navigate("/build"); }}
               className="w-full py-3 bg-[var(--color-danger)] text-white rounded-2xl font-black uppercase tracking-widest border-4 border-red-700 shadow-[0_6px_0_#991b1b] hover:-translate-y-1 hover:shadow-[0_8px_0_#991b1b] active:translate-y-2 active:shadow-none transition-all"
             >
               Return to Lobby
