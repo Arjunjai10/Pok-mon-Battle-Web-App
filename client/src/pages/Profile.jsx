@@ -10,7 +10,7 @@ export default function Profile() {
 
   useEffect(() => {
     if (!token) {
-      navigate('/');
+      navigate('/build');
       return;
     }
 
@@ -39,7 +39,7 @@ export default function Profile() {
       {/* Header */}
       <div className="w-full max-w-4xl flex justify-between items-center mb-8">
         <button 
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/build')}
           className="px-4 py-2 bg-white border-4 border-[var(--color-border)] rounded-xl font-black uppercase tracking-widest text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] shadow-[0_4px_0_var(--color-border)] hover:-translate-y-1 hover:shadow-[0_6px_0_var(--color-primary)] active:translate-y-1 active:shadow-none transition-all"
         >
           ← Back to Lab
@@ -115,7 +115,7 @@ export default function Profile() {
               <h3 className="text-xl font-black text-[var(--color-text-secondary)] uppercase tracking-wider">No Team Registered</h3>
               <p className="text-[var(--color-text-muted)] font-bold mt-2">Head back to the lab to build and save your team!</p>
               <button 
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/build')}
                 className="mt-6 px-6 py-3 bg-[var(--color-primary)] text-white border-4 border-blue-700 rounded-xl font-black uppercase tracking-widest shadow-[0_4px_0_#1d4ed8] hover:-translate-y-1 hover:shadow-[0_6px_0_#1d4ed8] active:translate-y-1 active:shadow-none transition-all"
               >
                 Build Team
