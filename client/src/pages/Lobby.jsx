@@ -83,7 +83,12 @@ export default function Lobby() {
 
     function handleError({ message }) {
       setError(message);
-      if (!myCode) setIsWaiting(false);
+      if (message === "You are not in a room." || message.includes("Room not found")) {
+        setIsWaiting(false);
+        setMyCode(null);
+      } else if (!myCode) {
+        setIsWaiting(false);
+      }
     }
 
     socket.on("room-created", handleRoomCreated);

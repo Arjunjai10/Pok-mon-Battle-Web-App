@@ -8,6 +8,24 @@ export default function Landing() {
   const { user, logout } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
+  const floatingPokemon = [
+    { id: 25, top: '10%', left: '5%', delay: '0s', size: '100px', flip: true },        // Pikachu
+    { id: 6, top: '15%', right: '5%', delay: '1s', size: '150px' },                  // Charizard
+    { id: 94, top: '60%', left: '8%', delay: '2s', size: '120px', flip: true },      // Gengar
+    { id: 143, top: '55%', right: '8%', delay: '0.5s', size: '160px' },             // Snorlax
+    { id: 150, top: '5%', left: '30%', delay: '1.5s', size: '140px', flip: true, hiddenSm: true },   // Mewtwo
+    { id: 149, top: '10%', right: '30%', delay: '2.5s', size: '130px', hiddenSm: true },  // Dragonite
+    { id: 9, top: '80%', left: '25%', delay: '0.8s', size: '140px', flip: true, hiddenSm: true },   // Blastoise
+    { id: 3, top: '75%', right: '25%', delay: '1.2s', size: '150px', hiddenSm: true },  // Venusaur
+    // New Additions:
+    { id: 130, top: '35%', left: '-2%', delay: '3s', size: '200px', flip: true, hiddenSm: true }, // Gyarados
+    { id: 144, top: '25%', right: '40%', delay: '0.2s', size: '120px', hiddenSm: true }, // Articuno
+    { id: 145, top: '85%', right: '40%', delay: '1.8s', size: '120px', flip: true, hiddenSm: true }, // Zapdos
+    { id: 65, top: '70%', right: '5%', delay: '2.2s', size: '110px' },               // Alakazam
+    { id: 68, top: '40%', left: '15%', delay: '1.1s', size: '130px', flip: true },   // Machamp
+    { id: 131, top: '45%', right: '15%', delay: '0.7s', size: '140px' },             // Lapras
+  ];
+
   return (
     <div className="min-h-[100dvh] flex flex-col font-body bg-[var(--color-bg-deep)] overflow-x-hidden">
       
@@ -41,8 +59,30 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 text-center py-20">
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 text-center py-20 overflow-hidden">
         
+        {/* Floating Pokemon */}
+        {floatingPokemon.map((p, i) => (
+          <img
+            key={i}
+            src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${p.id}.gif`}
+            alt="Pokemon"
+            className={`absolute opacity-80 drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] ${p.hiddenSm ? 'hidden md:block' : ''}`}
+            style={{
+              top: p.top,
+              left: p.left,
+              right: p.right,
+              bottom: p.bottom,
+              animation: `float 3s ease-in-out infinite`,
+              animationDelay: p.delay,
+              transform: p.flip ? 'scaleX(-1)' : 'none',
+              zIndex: -1,
+              width: p.size,
+              imageRendering: 'pixelated'
+            }}
+          />
+        ))}
+
         {/* Title */}
         <h1 className="text-6xl md:text-8xl font-black text-white uppercase tracking-tighter drop-shadow-[0_8px_0_rgba(0,0,0,0.4)] mb-6 animate-bounce" style={{ WebkitTextStroke: '3px black' }}>
           Pokémon <br/> Battle Web
