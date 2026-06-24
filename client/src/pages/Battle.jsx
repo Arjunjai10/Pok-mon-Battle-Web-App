@@ -339,8 +339,21 @@ export default function Battle() {
       
       {/* Header */}
       <div className="flex justify-between items-center bg-white border-4 border-[var(--color-text-primary)] rounded-xl px-4 py-2 flex-shrink-0 shadow-[0_4px_0_var(--color-text-primary)]">
-        <div className="text-sm font-bold text-[var(--color-text-secondary)]">
-          Turn {turn}
+        <div className="flex items-center gap-4">
+          <div className="text-sm font-bold text-[var(--color-text-secondary)]">
+            Turn {turn}
+          </div>
+          <button
+            onClick={() => {
+              if (phase !== 'battle-over' && window.confirm("Are you sure you want to run? You will forfeit the match!")) {
+                socket.emit("submit-forfeit");
+              }
+            }}
+            disabled={phase === 'battle-over'}
+            className="px-3 py-1 bg-[var(--color-danger)] text-white border-2 border-red-800 rounded-lg font-black uppercase text-[10px] sm:text-xs hover:-translate-y-0.5 hover:shadow-[0_2px_0_#7f1d1d] active:translate-y-0 active:shadow-none transition-all disabled:opacity-50"
+          >
+            Run
+          </button>
         </div>
         <div className="flex gap-1">
           {opponent.bench.map((b, i) => (
