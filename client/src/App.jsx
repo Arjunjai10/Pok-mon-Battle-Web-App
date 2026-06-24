@@ -3,6 +3,7 @@ import TeamBuilder from "./pages/TeamBuilder.jsx";
 import Lobby from "./pages/Lobby.jsx";
 import Battle from "./pages/Battle.jsx";
 import { SocketProvider } from "./context/SocketContext.jsx";
+import { AuthProvider } from "./context/AuthContext.jsx";
 
 function SocketLayout() {
   return (
@@ -14,13 +15,15 @@ function SocketLayout() {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<TeamBuilder />} />
-      <Route element={<SocketLayout />}>
-        <Route path="/lobby" element={<Lobby />} />
-        <Route path="/battle/:id" element={<Battle />} />
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <AuthProvider>
+      <Routes>
+        <Route path="/" element={<TeamBuilder />} />
+        <Route element={<SocketLayout />}>
+          <Route path="/lobby" element={<Lobby />} />
+          <Route path="/battle/:id" element={<Battle />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AuthProvider>
   );
 }

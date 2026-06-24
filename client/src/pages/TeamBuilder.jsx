@@ -21,6 +21,8 @@ import PokemonCard from "../components/PokemonCard.jsx";
 import MoveButton from "../components/MoveButton.jsx";
 import HpBar from "../components/HpBar.jsx";
 import { TypeBadge, STAT_LABELS, groupLearnsetByMethod, getMethodMeta } from "../utils/typeUtils.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
+import AuthModal from "../components/AuthModal.jsx";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -87,6 +89,11 @@ export default function TeamBuilder() {
   // ── Which Pokémon is open in the detail panel
   const [activePokemon, setActivePokemon] = useState(null);
 
+  // ── Auth state
+  const { user, logout, saveTeam, loadTeam, loading: authLoading } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
   // ── Search / filter state
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
@@ -95,6 +102,20 @@ export default function TeamBuilder() {
   useEffect(() => {
     localStorage.setItem("poke-team", JSON.stringify(team));
   }, [team]);
+
+  // ── Auto-load team from server if empty
+  useEffect(() => {
+    if (user && !authLoading) {
+      const isTeamEmpty = team.every(slot => slot === null);
+      if (isTeamEmpty) {
+        loadTeam().then(savedTeam => {
+          if (savedTeam && savedTeam.length > 0) {
+            setTeam(savedTeam);
+          }
+        }).catch(err => console.error("Auto-load failed", err));
+      }
+    }
+  }, [user, authLoading]);
 
   // ── Computed: which pokemon IDs are on the team
   const teamPokemonIds = useMemo(
@@ -252,6 +273,19 @@ export default function TeamBuilder() {
     navigate("/lobby");
   };
 
+  const handleSaveTeam = async () => {
+    if (!user || !canProceed) return;
+    try {
+      setIsSaving(true);
+      await saveTeam(team);
+      alert('Team saved to your account!');
+    } catch (err) {
+      alert('Failed to save team: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // ── Render ────────────────────────────────────────────────────────────────────
 
   if (loading) return <LoadingScreen />;
@@ -279,6 +313,29 @@ export default function TeamBuilder() {
             </span>
             <span className="text-red-200"> / {TEAM_SIZE} Selected</span>
           </span>
+          
+          {/* User Profile / Login */}
+          <div className="border-l border-red-700/50 pl-4 ml-2">
+            {user ? (
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-black text-white uppercase tracking-wider">{user.username}</span>
+                <button 
+                  onClick={logout}
+                  className="px-3 py-1.5 bg-red-900/50 hover:bg-red-900 text-red-200 text-xs font-bold rounded-lg border border-red-800 transition-colors uppercase"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={() => setShowAuthModal(true)}
+                className="px-4 py-2 bg-white text-[var(--color-danger)] font-black text-sm uppercase tracking-widest rounded-xl border-b-4 border-red-200 hover:-translate-y-0.5 active:translate-y-0 active:border-b-0 transition-all shadow-sm"
+              >
+                Login
+              </button>
+            )}
+          </div>
+          
           <button
             id="proceed-btn"
             onClick={handleProceed}
@@ -424,17 +481,31 @@ export default function TeamBuilder() {
                 {validationErrors[0]}
               </div>
             )}
-            <button 
-              onClick={handleProceed}
-              disabled={!canProceed}
-              className={`w-full sm:w-auto px-8 py-3.5 rounded-full font-black uppercase tracking-widest text-sm transition-all duration-200 border-4 ${canProceed ? 'bg-[var(--color-primary)] border-blue-700 text-white hover:-translate-y-1 shadow-[0_6px_0_#1d4ed8] active:translate-y-1 active:shadow-none' : 'bg-[var(--color-bg-deep)] text-[var(--color-text-muted)] cursor-not-allowed border-[var(--color-border)] shadow-none'}`}
-            >
-              {canProceed ? "Ready for Battle →" : "Incomplete Team"}
-            </button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              {user && (
+                <button
+                  onClick={handleSaveTeam}
+                  disabled={!canProceed || isSaving}
+                  className={`w-full sm:w-auto px-6 py-3.5 rounded-full font-black uppercase tracking-widest text-sm transition-all duration-200 border-4 ${canProceed ? 'bg-[var(--color-bg-card)] border-[var(--color-primary)] text-[var(--color-primary)] hover:-translate-y-1 shadow-[0_6px_0_var(--color-primary)] active:translate-y-1 active:shadow-none' : 'bg-[var(--color-bg-deep)] text-[var(--color-text-muted)] cursor-not-allowed border-[var(--color-border)] shadow-none'}`}
+                >
+                  {isSaving ? "Saving..." : "Save Team"}
+                </button>
+              )}
+              <button 
+                onClick={handleProceed}
+                disabled={!canProceed}
+                className={`w-full sm:w-auto px-8 py-3.5 rounded-full font-black uppercase tracking-widest text-sm transition-all duration-200 border-4 ${canProceed ? 'bg-[var(--color-primary)] border-blue-700 text-white hover:-translate-y-1 shadow-[0_6px_0_#1d4ed8] active:translate-y-1 active:shadow-none' : 'bg-[var(--color-bg-deep)] text-[var(--color-text-muted)] cursor-not-allowed border-[var(--color-border)] shadow-none'}`}
+              >
+                {canProceed ? "Ready for Battle →" : "Incomplete Team"}
+              </button>
+            </div>
           </div>
+          
           
         </div>
       </div>
+      
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
     </div>
   );
 }
