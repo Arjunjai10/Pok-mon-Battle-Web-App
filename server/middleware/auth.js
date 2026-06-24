@@ -12,6 +12,21 @@ function authMiddleware(req, res, next) {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded; // { id, username }
+    
+    // Auto-recreate user if they don't exist (e.g. server restarted and wiped ephemeral DB)
+    const db = require('../utils/db');
+    const users = db.getUsers();
+    if (!users.find(u => u.id === req.user.id)) {
+      users.push({
+        id: req.user.id,
+        username: req.user.username,
+        password: '', // Unusable password, but session stays valid
+        team: null,
+        createdAt: new Date().toISOString()
+      });
+      db.saveUsers(users);
+    }
+
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Unauthorized: Invalid token' });
