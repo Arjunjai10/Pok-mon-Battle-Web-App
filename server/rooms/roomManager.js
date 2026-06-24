@@ -173,6 +173,22 @@ class RoomManager {
   }
 
   /**
+   * Forfeit the battle.
+   * Returns { success, error?, room, winner }
+   */
+  submitForfeit(code, playerKey) {
+    const room = this.rooms.get(code);
+    if (!room) return { success: false, error: "Room not found." };
+    if (room.phase === "battle-over") return { success: false, error: "Battle is already over." };
+
+    const oppKey = this._oppKey(playerKey);
+    room.battleState.winner = oppKey;
+    room.phase = "battle-over";
+
+    return { success: true, room, winner: oppKey };
+  }
+
+  /**
    * Request a rematch.
    * Returns { success, bothReady, room? }
    */
