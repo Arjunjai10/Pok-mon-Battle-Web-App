@@ -51,15 +51,15 @@ io.on("connection", (socket) => {
   log(`connected  ${short(socket.id)}`);
 
   // ── Create Room ─────────────────────────────────────────────────────────────
-  socket.on("create-room", ({ team, sessionId }) => {
+  socket.on("create-room", ({ team, sessionId, format = "1v1", playerName = "Trainer" }) => {
     try {
       if (!validTeam(team)) {
         return socket.emit("error", { message: "Invalid team: must have exactly 6 Pokémon with 4 moves each." });
       }
-      const code = rooms.createRoom(socket.id, team, sessionId);
+      const code = rooms.createRoom(socket.id, team, sessionId, format, playerName);
       socket.join(code);
-      socket.emit("room-created", { code });
-      log(`room created  ${code}  by ${short(socket.id)}`);
+      socket.emit("room-created", { code, format });
+      log(`room created  ${code}  by ${short(socket.id)} format ${format}`);
     } catch (err) {
       console.error("[create-room]", err);
       socket.emit("error", { message: "Failed to create room. Please try again." });
@@ -67,13 +67,13 @@ io.on("connection", (socket) => {
   });
 
   // ── Join Room ───────────────────────────────────────────────────────────────
-  socket.on("join-room", ({ code, team, sessionId }) => {
+  socket.on("join-room", ({ code, team, sessionId, playerName = "Trainer" }) => {
     try {
       if (!validTeam(team)) {
         return socket.emit("error", { message: "Invalid team: must have exactly 6 Pokémon with 4 moves each." });
       }
 
-      const result = rooms.joinRoom(socket.id, code, team, sessionId);
+      const result = rooms.joinRoom(socket.id, code, team, sessionId, playerName);
       if (!result.success) {
         return socket.emit("error", { message: result.error });
       }
@@ -88,26 +88,60 @@ io.on("connection", (socket) => {
         return;
       }
 
-      log(`room joined  ${room.code}  p2=${short(socket.id)}`);
+      log(`room joined  ${room.code}  ${playerKey}=${short(socket.id)}`);
 
-      // Send initial battle state to both players simultaneously
-      const p1SocketId = room.players.p1.socketId;
-      io.to(p1SocketId).emit("battle-start", {
-        playerKey: "p1",
-        state: rooms.buildClientState(room, "p1"),
-      });
-      socket.emit("battle-start", {
-        playerKey: "p2",
-        state: rooms.buildClientState(room, "p2"),
-      });
+      // If the room auto-started (1v1 case)
+      if (room.phase === "picking") {
+         const keys = rooms._getPlayerKeys(room);
+         for (const k of keys) {
+            io.to(room.players[k].socketId).emit("battle-start", {
+              playerKey: k,
+              state: rooms.buildClientState(room, k),
+            });
+         }
+      } else {
+         // Tell everyone in lobby about the new player
+         io.to(room.code).emit("lobby-update", {
+            players: rooms._getPlayerKeys(room).map(k => ({
+              key: k,
+              name: room.players[k].name || "Trainer",
+              isOwner: room.owner === k
+            }))
+         });
+      }
     } catch (err) {
       console.error("[join-room]", err);
       socket.emit("error", { message: "Failed to join room. Please try again." });
     }
   });
 
+  // ── Start Battle (FFA manual start) ──────────────────────────────────────────
+  socket.on("start-battle", () => {
+    try {
+       const info = rooms.getRoomBySocket(socket.id);
+       if (!info) return socket.emit("error", { message: "You are not in a room." });
+       const { code, playerKey, room } = info;
+
+       if (room.owner !== playerKey) return socket.emit("error", { message: "Only the room owner can start the battle." });
+       
+       const result = rooms.startBattle(code);
+       if (!result.success) return socket.emit("error", { message: result.error });
+
+       const keys = rooms._getPlayerKeys(room);
+       for (const k of keys) {
+          io.to(room.players[k].socketId).emit("battle-start", {
+            playerKey: k,
+            state: rooms.buildClientState(room, k),
+          });
+       }
+    } catch (err) {
+       console.error("[start-battle]", err);
+       socket.emit("error", { message: "Failed to start battle." });
+    }
+  });
+
   // ── Submit Action (move or voluntary switch) ────────────────────────────────
-  socket.on("submit-action", ({ type, move, switchTo }) => {
+  socket.on("submit-action", ({ type, move, switchTo, targetId }) => {
     try {
       const info = rooms.getRoomBySocket(socket.id);
       if (!info) return socket.emit("error", { message: "You are not in a room." });
@@ -115,7 +149,7 @@ io.on("connection", (socket) => {
       const { code, playerKey, room } = info;
 
       // Validate action shape
-      const action = buildAction(type, move, switchTo);
+      const action = buildAction(type, move, switchTo, targetId);
       if (!action) return socket.emit("error", { message: `Unknown action type: "${type}".` });
 
       const result = rooms.submitAction(code, playerKey, action);
@@ -137,8 +171,6 @@ io.on("connection", (socket) => {
         broadcastPlayerStates(room, "turn-result", { log: turnLog, events });
 
         if (winner) {
-          // battle-over is already embedded in each player's state.phase
-          // but we also emit a dedicated event for clean UX handling
           io.to(code).emit("battle-over", { winner, log: turnLog });
         }
       }
@@ -182,12 +214,24 @@ io.on("connection", (socket) => {
 
       log(`forfeit  ${code}  ${playerKey}`);
       
-      const playerName = room.players[playerKey].name || (playerKey === "p1" ? "Player 1" : "Player 2");
-      const oppName = room.players[result.winner].name || (result.winner === "p1" ? "Player 1" : "Player 2");
-      const logMsg = [`${playerName} fled the battle!`, `${oppName} wins by default!`];
+      const playerName = room.players[playerKey].name || playerKey;
+      const logMsg = [`${playerName} was defeated or fled!`, ...(result.winner ? [`Player ${result.winner} wins the battle!`] : [])];
+
+      if (result.needsResolution) {
+        const resolved = rooms.resolveTurn(code);
+        if (resolved) {
+          broadcastPlayerStates(room, "turn-result", { log: [...logMsg, ...resolved.log], events: resolved.events });
+          if (resolved.winner) {
+            io.to(code).emit("battle-over", { winner: resolved.winner, log: [...logMsg, ...resolved.log] });
+          }
+          return;
+        }
+      }
 
       broadcastPlayerStates(room, "turn-result", { log: logMsg });
-      io.to(code).emit("battle-over", { winner: result.winner, log: logMsg });
+      if (result.winner) {
+        io.to(code).emit("battle-over", { winner: result.winner, log: logMsg });
+      }
 
     } catch (err) {
       console.error("[submit-forfeit]", err);
@@ -211,19 +255,14 @@ io.on("connection", (socket) => {
       if (result.bothReady) {
         log(`rematch accepted  ${code}`);
         const { room } = result;
-        const p1SocketId = room.players.p1.socketId;
-        const p2SocketId = room.players.p2.socketId;
-
-        io.to(p1SocketId).emit("battle-start", {
-          playerKey: "p1",
-          state: rooms.buildClientState(room, "p1"),
-        });
-        io.to(p2SocketId).emit("battle-start", {
-          playerKey: "p2",
-          state: rooms.buildClientState(room, "p2"),
-        });
+        const keys = rooms._getPlayerKeys(room);
+        for (const k of keys) {
+           io.to(room.players[k].socketId).emit("battle-start", {
+             playerKey: k,
+             state: rooms.buildClientState(room, k),
+           });
+        }
       } else {
-        // Just acknowledge they are waiting
         socket.emit("rematch-waiting");
       }
     } catch (err) {
@@ -236,34 +275,34 @@ io.on("connection", (socket) => {
   socket.on("disconnect", (reason) => {
     log(`disconnected  ${short(socket.id)}  reason=${reason}`);
     
-    const info = rooms.removeSocket(socket.id, ({ opponentSocketId, code }) => {
+    const info = rooms.removeSocket(socket.id, ({ opponentSocketIds, code, playerKey }) => {
       // This callback fires if the 90s grace timer expires
-      if (opponentSocketId) {
-        io.to(opponentSocketId).emit("opponent-disconnected", {
-          message: "Your opponent disconnected permanently. The battle has ended.",
+      if (opponentSocketIds && opponentSocketIds.length > 0) {
+        opponentSocketIds.forEach(sid => {
+           io.to(sid).emit("opponent-disconnected", {
+             message: `Player ${playerKey} disconnected permanently.`,
+           });
         });
-        log(`notified opponent  ${short(opponentSocketId)}  of PERMANENT disconnect from room ${code}`);
+        log(`notified opponents of PERMANENT disconnect from room ${code}`);
       }
     });
 
-    if (info?.opponentSocketId) {
+    if (info?.opponentSocketIds && info.opponentSocketIds.length > 0) {
       // Immediately tell the opponent about the grace period
-      io.to(info.opponentSocketId).emit("opponent-reconnecting", {
-        message: "Opponent reconnecting... (90s)",
+      info.opponentSocketIds.forEach(sid => {
+         io.to(sid).emit("opponent-reconnecting", {
+           message: `Player ${info.playerKey} reconnecting... (90s)`,
+         });
       });
-      log(`notified opponent  ${short(info.opponentSocketId)}  of GRACE PERIOD for room ${info.code}`);
+      log(`notified opponents of GRACE PERIOD for room ${info.code}`);
     }
   });
 
   // ── Helpers (per-connection scope) ───────────────────────────────────────────
 
-  /**
-   * Emit a personalised event payload to each player in a room.
-   * Each player gets `buildClientState` called for their key so they
-   * never see opponent's moves or incorrect phase.
-   */
   function broadcastPlayerStates(room, event, extra = {}) {
-    for (const key of ["p1", "p2"]) {
+    const keys = rooms._getPlayerKeys(room);
+    for (const key of keys) {
       const sid = room.players[key]?.socketId;
       if (!sid) continue;
       const state = rooms.buildClientState(room, key);
@@ -272,7 +311,7 @@ io.on("connection", (socket) => {
       if (extra.events) {
         payload.events = extra.events.map(e => ({
           ...e,
-          target: e.targetKey === key ? "me" : "opponent",
+          target: e.targetKey === key ? "me" : (e.targetKey || "opponent"),
         }));
       }
 
@@ -293,8 +332,8 @@ function validTeam(team) {
   );
 }
 
-function buildAction(type, move, switchTo) {
-  if (type === "move" && move) return { type: "move", move };
+function buildAction(type, move, switchTo, targetId) {
+  if (type === "move" && move) return { type: "move", move, targetId };
   if (type === "switch" && switchTo !== undefined) return { type: "switch", switchTo };
   return null;
 }

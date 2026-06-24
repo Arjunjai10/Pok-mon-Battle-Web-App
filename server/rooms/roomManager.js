@@ -1,16 +1,3 @@
-/**
- * roomManager.js — Server-side room state manager
- *
- * Responsibilities:
- *   - Create / join rooms with random 6-char codes
- *   - Store per-room battle state (server is authoritative)
- *   - Buffer player actions; resolve turn when both submitted
- *   - Handle forced switches after faints
- *   - Clean up rooms on disconnect
- *
- * Singleton — one instance shared across the whole server process.
- */
-
 "use strict";
 
 const { resolveTurn, executeSwitch, STATUS, ACTION_TYPE } = require("../engine/battleEngine");
@@ -18,7 +5,7 @@ const { teamToEngineState } = require("../engine/statCalc");
 
 // ── Code generation ───────────────────────────────────────────────────────────
 
-const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no O/0/I/1 to avoid confusion
+const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const CODE_LEN   = 6;
 
 function randomCode() {
@@ -33,24 +20,24 @@ function randomCode() {
 //
 // {
 //   code: string,
+//   format: "1v1" | "ffa",
+//   maxPlayers: number,
+//   owner: string (playerKey),
 //   phase: "waiting-for-players" | "picking" | "force-switch" | "battle-over",
 //   players: {
-//     p1: { socketId, rawTeam, pendingAction: null | action },
-//     p2: null | { socketId, rawTeam, pendingAction: null | action },
+//     p1: { socketId, rawTeam, pendingAction: null | action, sessionId, name },
+//     p2: ..., p3: ..., etc.
 //   },
-//   battleState: null | { p1: playerEngineState, p2: playerEngineState, turn, winner },
-//   pendingForceSwitches: Set<"p1"|"p2">,
+//   battleState: null | { p1: playerEngineState, p2: ..., turn, winner },
+//   pendingForceSwitches: Set<playerKey>,
+//   disconnectTimers: { p1: null, ... },
 // }
-
-// ── Manager ───────────────────────────────────────────────────────────────────
 
 class RoomManager {
   constructor() {
     this.rooms        = new Map(); // code     → room
     this.socketToRoom = new Map(); // socketId → { code, playerKey }
   }
-
-  // ── Internal helpers ───────────────────────────────────────────────────────
 
   _uniqueCode() {
     let code, tries = 0;
@@ -59,85 +46,85 @@ class RoomManager {
     return code;
   }
 
-  _oppKey(playerKey) {
-    return playerKey === "p1" ? "p2" : "p1";
+  _getPlayerKeys(room) {
+    return Object.keys(room.players).filter(k => room.players[k]);
   }
 
-  // ── Public API ─────────────────────────────────────────────────────────────
-
-  /**
-   * Create a new room. Returns the room code.
-   */
-  createRoom(socketId, rawTeam, sessionId) {
+  createRoom(socketId, rawTeam, sessionId, format = "1v1", playerName = "Trainer") {
     const code = this._uniqueCode();
     this.rooms.set(code, {
       code,
+      format,
+      maxPlayers: format === "ffa" ? 5 : 2,
+      owner: "p1",
       phase: "waiting-for-players",
       players: {
-        p1: { socketId, rawTeam, pendingAction: null, sessionId },
-        p2: null,
+        p1: { socketId, rawTeam, pendingAction: null, sessionId, name: playerName },
       },
       battleState: null,
       pendingForceSwitches: new Set(),
-      disconnectTimers: { p1: null, p2: null },
+      disconnectTimers: { p1: null },
     });
     this.socketToRoom.set(socketId, { code, playerKey: "p1" });
     return code;
   }
 
-  /**
-   * Join an existing room.
-   * Returns { success, playerKey?, room?, error?, reconnected? }
-   */
-  joinRoom(socketId, code, rawTeam, sessionId) {
+  joinRoom(socketId, code, rawTeam, sessionId, playerName = "Trainer") {
     const upperCode = (code || "").toUpperCase().trim();
     const room = this.rooms.get(upperCode);
 
     if (!room) return { success: false, error: "Room not found — double-check the code." };
     
     // Check for reconnect
-    if (room.players.p1 && room.players.p1.sessionId === sessionId) {
-      if (room.disconnectTimers.p1) {
-        clearTimeout(room.disconnectTimers.p1);
-        room.disconnectTimers.p1 = null;
+    for (const key of this._getPlayerKeys(room)) {
+      if (room.players[key].sessionId === sessionId) {
+        if (room.disconnectTimers[key]) {
+          clearTimeout(room.disconnectTimers[key]);
+          room.disconnectTimers[key] = null;
+        }
+        room.players[key].socketId = socketId;
+        this.socketToRoom.set(socketId, { code: upperCode, playerKey: key });
+        return { success: true, playerKey: key, room, reconnected: true };
       }
-      room.players.p1.socketId = socketId;
-      this.socketToRoom.set(socketId, { code: upperCode, playerKey: "p1" });
-      return { success: true, playerKey: "p1", room, reconnected: true };
-    }
-    if (room.players.p2 && room.players.p2.sessionId === sessionId) {
-      if (room.disconnectTimers.p2) {
-        clearTimeout(room.disconnectTimers.p2);
-        room.disconnectTimers.p2 = null;
-      }
-      room.players.p2.socketId = socketId;
-      this.socketToRoom.set(socketId, { code: upperCode, playerKey: "p2" });
-      return { success: true, playerKey: "p2", room, reconnected: true };
     }
 
-    if (room.players.p2 !== null) return { success: false, error: "That room is already full." };
-    if (room.players.p1.socketId === socketId) return { success: false, error: "You cannot join your own room." };
+    if (room.phase !== "waiting-for-players") return { success: false, error: "Battle has already started." };
+    
+    const currentCount = this._getPlayerKeys(room).length;
+    if (currentCount >= room.maxPlayers) return { success: false, error: "That room is already full." };
 
-    // Register p2
-    room.players.p2 = { socketId, rawTeam, pendingAction: null, sessionId };
-    this.socketToRoom.set(socketId, { code: upperCode, playerKey: "p2" });
+    const newKey = `p${currentCount + 1}`;
+    
+    room.players[newKey] = { socketId, rawTeam, pendingAction: null, sessionId, name: playerName };
+    room.disconnectTimers[newKey] = null;
+    this.socketToRoom.set(socketId, { code: upperCode, playerKey: newKey });
 
-    // Build initial battle state from both teams
+    // In 1v1, auto-start if 2 players. In FFA, owner must start it.
+    if (room.format === "1v1" && currentCount + 1 === 2) {
+      this.startBattle(upperCode);
+    }
+
+    return { success: true, playerKey: newKey, room, reconnected: false };
+  }
+
+  startBattle(code) {
+    const room = this.rooms.get(code);
+    if (!room || room.phase !== "waiting-for-players") return { success: false };
+
+    const keys = this._getPlayerKeys(room);
+    if (keys.length < 2) return { success: false, error: "Need at least 2 players to start." };
+
     room.battleState = {
-      p1: teamToEngineState(room.players.p1.rawTeam, "p1"),
-      p2: teamToEngineState(rawTeam, "p2"),
       turn: 1,
       winner: null,
     };
+    for (const key of keys) {
+      room.battleState[key] = teamToEngineState(room.players[key].rawTeam, key);
+    }
     room.phase = "picking";
-
-    return { success: true, playerKey: "p2", room, reconnected: false };
+    return { success: true, room };
   }
 
-  /**
-   * Look up a room by socket ID.
-   * Returns { code, playerKey, room } or null.
-   */
   getRoomBySocket(socketId) {
     const info = this.socketToRoom.get(socketId);
     if (!info) return null;
@@ -145,105 +132,118 @@ class RoomManager {
     return room ? { code: info.code, playerKey: info.playerKey, room } : null;
   }
 
-  /**
-   * Return the opponent's socket ID for a given player in a room.
-   */
-  getOpponentSocketId(room, playerKey) {
-    const opp = this._oppKey(playerKey);
-    return room.players[opp]?.socketId ?? null;
+  getOpponentSocketIds(room, playerKey) {
+    return this._getPlayerKeys(room).filter(k => k !== playerKey).map(k => room.players[k].socketId).filter(Boolean);
   }
 
-  /**
-   * Record a player's action for the current turn.
-   * Returns { success, bothReady, error? }
-   */
+  getAllSocketIds(room) {
+    return this._getPlayerKeys(room).map(k => room.players[k].socketId).filter(Boolean);
+  }
+
   submitAction(code, playerKey, action) {
     const room = this.rooms.get(code);
     if (!room)                        return { success: false, error: "Room not found." };
     if (room.phase !== "picking")     return { success: false, error: `Actions cannot be submitted in phase "${room.phase}".` };
+    
+    // Only alive players can submit actions. If player is dead, they are implicitly ready.
+    const ps = room.battleState[playerKey];
+    if (ps.active.currentHp <= 0 && ps.bench.every(p => p.currentHp <= 0)) {
+       return { success: false, error: "You are eliminated." };
+    }
+
     if (room.players[playerKey].pendingAction)
       return { success: false, error: "You already submitted an action this turn." };
 
     room.players[playerKey].pendingAction = action;
 
-    const p1Ready = Boolean(room.players.p1?.pendingAction);
-    const p2Ready = Boolean(room.players.p2?.pendingAction);
+    const keys = this._getPlayerKeys(room);
+    const allReady = keys.every(k => {
+      const ps = room.battleState[k];
+      const isDead = ps.active.currentHp <= 0 && ps.bench.every(p => p.currentHp <= 0);
+      return isDead || Boolean(room.players[k].pendingAction);
+    });
 
-    return { success: true, bothReady: p1Ready && p2Ready };
+    return { success: true, bothReady: allReady };
   }
 
-  /**
-   * Forfeit the battle.
-   * Returns { success, error?, room, winner }
-   */
   submitForfeit(code, playerKey) {
     const room = this.rooms.get(code);
     if (!room) return { success: false, error: "Room not found." };
     if (room.phase === "battle-over") return { success: false, error: "Battle is already over." };
 
-    const oppKey = this._oppKey(playerKey);
-    room.battleState.winner = oppKey;
-    room.phase = "battle-over";
+    // Faint entire team to process forfeit in FFA natively
+    const ps = room.battleState[playerKey];
+    ps.active.currentHp = 0;
+    ps.bench.forEach(p => p.currentHp = 0);
 
-    return { success: true, room, winner: oppKey };
+    const keys = this._getPlayerKeys(room);
+    const aliveKeys = keys.filter(k => {
+      const p = room.battleState[k];
+      return p.active.currentHp > 0 || p.bench.some(b => b.currentHp > 0);
+    });
+
+    let winner = null;
+    if (aliveKeys.length <= 1) {
+       winner = aliveKeys[0] || "draw";
+       room.battleState.winner = winner;
+       room.phase = "battle-over";
+    } else {
+       // If forfeiting player was the last one we were waiting for
+       const allReady = keys.every(k => {
+          const p = room.battleState[k];
+          const isDead = p.active.currentHp <= 0 && p.bench.every(b => b.currentHp <= 0);
+          return isDead || Boolean(room.players[k].pendingAction);
+       });
+       if (allReady && room.phase === "picking") {
+           // We need to resolve turn externally via resolveTurn(code)
+           return { success: true, room, winner, needsResolution: true };
+       }
+    }
+
+    return { success: true, room, winner };
   }
 
-  /**
-   * Request a rematch.
-   * Returns { success, bothReady, room? }
-   */
   submitRematch(code, playerKey) {
+    // FFA rematch is complex, for now we will disable rematches for FFA, or require everyone to accept.
     const room = this.rooms.get(code);
     if (!room) return { success: false, error: "Room not found." };
     if (room.phase !== "battle-over") return { success: false, error: "Battle is not over." };
 
-    // We can hijack pendingAction to store the rematch ready state during battle-over
     room.players[playerKey].pendingAction = { type: "rematch" };
 
-    const p1Ready = room.players.p1?.pendingAction?.type === "rematch";
-    const p2Ready = room.players.p2?.pendingAction?.type === "rematch";
+    const keys = this._getPlayerKeys(room);
+    const allReady = keys.every(k => room.players[k].pendingAction?.type === "rematch");
 
-    if (p1Ready && p2Ready) {
-      // Reset the room
-      room.players.p1.pendingAction = null;
-      room.players.p2.pendingAction = null;
+    if (allReady) {
+      keys.forEach(k => room.players[k].pendingAction = null);
       room.pendingForceSwitches = new Set();
       
-      // Re-initialize battle state from fresh teams
-      room.battleState = {
-        p1: teamToEngineState(room.players.p1.rawTeam, "p1"),
-        p2: teamToEngineState(room.players.p2.rawTeam, "p2"),
-        turn: 1,
-        winner: null,
-      };
+      room.battleState = { turn: 1, winner: null };
+      for (const key of keys) {
+        room.battleState[key] = teamToEngineState(room.players[key].rawTeam, key);
+      }
       room.phase = "picking";
     }
 
-    return { success: true, bothReady: p1Ready && p2Ready, room };
+    return { success: true, bothReady: allReady, room };
   }
 
-  /**
-   * Resolve the current turn (both actions must be submitted).
-   * Returns { newState, log, events, forceSwitches: Set<playerKey>, winner } or null.
-   */
   resolveTurn(code) {
     const room = this.rooms.get(code);
     if (!room?.battleState) return null;
 
-    const p1Action = room.players.p1.pendingAction;
-    const p2Action = room.players.p2.pendingAction;
+    const keys = this._getPlayerKeys(room);
+    const actions = {};
+    keys.forEach(k => {
+      actions[k] = room.players[k].pendingAction;
+      room.players[k].pendingAction = null;
+    });
 
-    // Clear before resolving
-    room.players.p1.pendingAction = null;
-    room.players.p2.pendingAction = null;
-
-    // Run the engine
-    const { newState, log, events } = resolveTurn(room.battleState, p1Action, p2Action);
+    const { newState, log, events } = resolveTurn(room.battleState, actions);
     room.battleState = newState;
 
-    // Determine which players need a forced switch (active fainted, bench not empty)
     const forceSwitches = new Set();
-    for (const key of ["p1", "p2"]) {
+    for (const key of keys) {
       const ps = newState[key];
       if (ps.active.currentHp <= 0 && ps.bench.some((p) => p.currentHp > 0)) {
         forceSwitches.add(key);
@@ -262,10 +262,6 @@ class RoomManager {
     return { newState, log, events, forceSwitches, winner: newState.winner };
   }
 
-  /**
-   * Apply a forced switch after a faint.
-   * Returns { success, allDone, log, newState, error? }
-   */
   submitForceSwitch(code, playerKey, switchToIndex) {
     const room = this.rooms.get(code);
     if (!room) return { success: false, error: "Room not found." };
@@ -278,7 +274,6 @@ class RoomManager {
     if (!target || target.currentHp <= 0)
       return { success: false, error: "That Pokémon can't battle — choose a healthy one." };
 
-    // Apply the switch
     const { playerState: updated, log } = executeSwitch(playerState, switchToIndex, []);
     room.battleState[playerKey] = updated;
     room.pendingForceSwitches.delete(playerKey);
@@ -289,10 +284,6 @@ class RoomManager {
     return { success: true, allDone, log, newState: room.battleState };
   }
 
-  /**
-   * Remove a socket from its room (on disconnect) and start a grace timer.
-   * Returns { opponentSocketId, code, playerKey } or null.
-   */
   removeSocket(socketId, onTimeout) {
     const info = this.socketToRoom.get(socketId);
     if (!info) return null;
@@ -305,98 +296,62 @@ class RoomManager {
 
     room.players[playerKey].socketId = null;
 
-    const opp = this._oppKey(playerKey);
-    const opponentSocketId = room.players[opp]?.socketId ?? null;
+    const oppSockets = this.getOpponentSocketIds(room, playerKey);
 
-    // Start 90s grace timer
     room.disconnectTimers[playerKey] = setTimeout(() => {
-      // If timer executes, the room is truly dead
-      this.rooms.delete(code);
-      if (room.players[opp]?.socketId) {
-        this.socketToRoom.delete(room.players[opp].socketId);
+      // If timer executes, the player is considered forfeited/dead
+      // For now we just faint their pokemon to process the forfeit
+      if (this.rooms.has(code)) {
+         this.submitForfeit(code, playerKey);
+         if (onTimeout) onTimeout({ opponentSocketIds: oppSockets, code, playerKey });
       }
-      if (onTimeout) onTimeout({ opponentSocketId, code });
     }, 90000);
 
-    return { opponentSocketId, code, playerKey };
+    return { opponentSocketIds: oppSockets, code, playerKey };
   }
 
-  // ── Client state builder ───────────────────────────────────────────────────
-
-  /**
-   * Build the sanitized per-player view of the battle state.
-   *
-   * Key privacy guarantee: opponent's moves are never included.
-   * Key phase derivation: computed per-player, not stored globally.
-   *
-   * Returns the clientState object to emit via `turn-result` / `battle-start`.
-   */
   buildClientState(room, playerKey) {
     if (!room.battleState) return null;
 
-    const opp   = this._oppKey(playerKey);
+    const keys = this._getPlayerKeys(room);
     const myPS  = room.battleState[playerKey];
-    const oppPS = room.battleState[opp];
-
-    // ── Serialisers ──
 
     const benchSummary = (bench) =>
       bench.map((p, i) => ({
-        id: p.id,
-        name: p.name,
-        types: p.types,
-        currentHp: p.currentHp,
-        maxHp: p.maxHp,
-        status: p.status,
-        spriteUrl: p.spriteUrl,
-        benchIndex: i,
+        id: p.id, name: p.name, types: p.types,
+        currentHp: p.currentHp, maxHp: p.maxHp, status: p.status,
+        spriteUrl: p.spriteUrl, benchIndex: i,
       }));
 
     const myActiveFull = {
-      id:       myPS.active.id,
-      name:     myPS.active.name,
-      types:    myPS.active.types,
-      currentHp:myPS.active.currentHp,
-      maxHp:    myPS.active.maxHp,
-      status:   myPS.active.status,
-      sleepTurns:myPS.active.sleepTurns,
-      heldItem: myPS.active.heldItem,
-      spriteUrl:myPS.active.spriteUrl,
-      currentStats: myPS.active.currentStats,
+      id: myPS.active.id, name: myPS.active.name, types: myPS.active.types,
+      currentHp: myPS.active.currentHp, maxHp: myPS.active.maxHp, status: myPS.active.status,
+      sleepTurns: myPS.active.sleepTurns, heldItem: myPS.active.heldItem,
+      spriteUrl: myPS.active.spriteUrl, currentStats: myPS.active.currentStats,
       statStages: myPS.active.statStages,
-      // Full moves with current PP
       moves: myPS.active.moves.map((m) => ({
-        name: m.name,
-        type: m.type,
-        power: m.power,
-        accuracy: m.accuracy,
-        pp: m.pp,
-        currentPp: m.currentPp,
-        priority: m.priority,
-        statusEffect: m.statusEffect,
-        effect: m.effect,
-        damageClass: m.damageClass,
+        name: m.name, type: m.type, power: m.power, accuracy: m.accuracy,
+        pp: m.pp, currentPp: m.currentPp, priority: m.priority,
+        statusEffect: m.statusEffect, effect: m.effect, damageClass: m.damageClass,
       })),
     };
 
-    const oppActiveSanitized = {
-      id:       oppPS.active.id,
-      name:     oppPS.active.name,
-      types:    oppPS.active.types,
-      currentHp:oppPS.active.currentHp,
-      maxHp:    oppPS.active.maxHp,
-      status:   oppPS.active.status,
-      spriteUrl:oppPS.active.spriteUrl,
-      heldItem: oppPS.active.heldItem,
-      currentStats: oppPS.active.currentStats,
-      statStages: oppPS.active.statStages,
-      // No moves — opponent's moveset is hidden until they use them (battle log reveals)
-    };
-
-    // ── Phase derivation ──
+    const opponents = keys.filter(k => k !== playerKey).map(k => {
+       const oppPS = room.battleState[k];
+       return {
+         playerKey: k,
+         name: room.players[k].name || "Opponent",
+         active: {
+           id: oppPS.active.id, name: oppPS.active.name, types: oppPS.active.types,
+           currentHp: oppPS.active.currentHp, maxHp: oppPS.active.maxHp, status: oppPS.active.status,
+           spriteUrl: oppPS.active.spriteUrl, heldItem: oppPS.active.heldItem,
+           currentStats: oppPS.active.currentStats, statStages: oppPS.active.statStages,
+         },
+         bench: benchSummary(oppPS.bench),
+       };
+    });
 
     const needsSwitch   = room.pendingForceSwitches.has(playerKey);
-    const oppNeedsSwitch = room.pendingForceSwitches.has(opp);
     const hasSubmitted  = Boolean(room.players[playerKey]?.pendingAction);
 
     let phase;
@@ -407,41 +362,36 @@ class RoomManager {
       else              phase = "opponent-switching";
     }
     else if (room.phase === "picking" && hasSubmitted) phase = "waiting";
-    else                                          phase = "picking";
+    else {
+      // If dead, they are just spectators picking nothing
+      const isDead = myPS.active.currentHp <= 0 && myPS.bench.every(p => p.currentHp <= 0);
+      phase = isDead ? "spectating" : "picking";
+    }
 
-    // ── Winner mapping ──
-
-    const winner = room.battleState.winner;
     let clientWinner = null;
-    if (winner === playerKey)    clientWinner = "me";
-    else if (winner === "draw")  clientWinner = "draw";
-    else if (winner)             clientWinner = "opponent";
-
-    // ── Force-switch bench (alive bench Pokémon, this player only) ──
+    const winner = room.battleState.winner;
+    if (winner === playerKey) clientWinner = "me";
+    else if (winner === "draw") clientWinner = "draw";
+    else if (winner) clientWinner = "opponent"; // Or the specific winner name
 
     const forceSwitchBench = needsSwitch
-      ? myPS.bench
-          .map((p, i) => ({ ...benchSummary([p])[0], benchIndex: i }))
-          .filter((p) => p.currentHp > 0)
+      ? myPS.bench.map((p, i) => ({ ...benchSummary([p])[0], benchIndex: i })).filter((p) => p.currentHp > 0)
       : null;
 
     return {
-      myKey:  playerKey,
+      myKey: playerKey,
       me: {
+        name: room.players[playerKey].name || "Me",
         active: myActiveFull,
-        bench:  benchSummary(myPS.bench),
+        bench: benchSummary(myPS.bench),
       },
-      opponent: {
-        active: oppActiveSanitized,
-        bench:  benchSummary(oppPS.bench),
-      },
-      turn:            room.battleState.turn,
+      opponents,
+      turn: room.battleState.turn,
       phase,
-      winner:          clientWinner,
+      winner: clientWinner,
       forceSwitchBench,
     };
   }
 }
 
-// Export singleton
 module.exports = new RoomManager();

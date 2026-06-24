@@ -598,34 +598,31 @@ function executeSwitch(playerState, switchToIndex, log) {
  * @param {object} p2Action - same shape
  * @returns {"p1First"|"p2First"}
  */
-function determineTurnOrder(p1State, p2State, p1Action, p2Action) {
-  // Switches always go first
-  const p1Switch = p1Action.type === ACTION_TYPE.SWITCH;
-  const p2Switch = p2Action.type === ACTION_TYPE.SWITCH;
+function determineTurnOrder(state, actions) {
+  // actions: { p1: action1, p2: action2, ... }
+  const keys = Object.keys(actions).filter(k => actions[k]);
+  
+  return keys.sort((k1, k2) => {
+    const a1 = actions[k1];
+    const a2 = actions[k2];
+    
+    const isSw1 = a1.type === ACTION_TYPE.SWITCH;
+    const isSw2 = a2.type === ACTION_TYPE.SWITCH;
+    if (isSw1 && !isSw2) return -1;
+    if (isSw2 && !isSw1) return 1;
 
-  if (p1Switch && !p2Switch) return "p1First";
-  if (p2Switch && !p1Switch) return "p2First";
-  if (p1Switch && p2Switch) {
-    // Both switch: P1 goes first (arbitrary; no mechanical difference)
-    return "p1First";
-  }
+    if (isSw1 && isSw2) return 0; // Switches have same priority
 
-  // Both using moves — compare priority then speed
-  const p1Priority = p1Action.move?.priority || 0;
-  const p2Priority = p2Action.move?.priority || 0;
+    const p1Priority = a1.move?.priority || 0;
+    const p2Priority = a2.move?.priority || 0;
+    if (p1Priority !== p2Priority) return p2Priority - p1Priority;
 
-  if (p1Priority > p2Priority) return "p1First";
-  if (p2Priority > p1Priority) return "p2First";
+    const s1Speed = getEffectiveStat(state[k1].active, "speed");
+    const s2Speed = getEffectiveStat(state[k2].active, "speed");
+    if (s1Speed !== s2Speed) return s2Speed - s1Speed;
 
-  // Equal priority — compare effective speed
-  const p1Speed = getEffectiveStat(p1State.active, "speed");
-  const p2Speed = getEffectiveStat(p2State.active, "speed");
-
-  if (p1Speed > p2Speed) return "p1First";
-  if (p2Speed > p1Speed) return "p2First";
-
-  // Speed tie — coin flip
-  return Math.random() < 0.5 ? "p1First" : "p2First";
+    return Math.random() < 0.5 ? -1 : 1;
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -687,7 +684,7 @@ function checkWinCondition(playerState) {
  * @param {object} [opts] - RNG overrides for testing: { randomFactor, hitRoll, paralysisRoll, thawRoll }
  * @returns {{ newState: object, log: string[], events: object[] }}
  */
-function resolveTurn(battleState, p1Action, p2Action, opts = {}) {
+function resolveTurn(battleState, actions, opts = {}) {
   if (battleState.winner) {
     return { newState: battleState, log: ["The battle is already over!"], events: [] };
   }
@@ -696,15 +693,12 @@ function resolveTurn(battleState, p1Action, p2Action, opts = {}) {
   let log = [];
   let events = [];
 
-  // Determine who acts first
-  const order = determineTurnOrder(state.p1, state.p2, p1Action, p2Action);
-  const [firstPlayerKey, secondPlayerKey] =
-    order === "p1First" ? ["p1", "p2"] : ["p2", "p1"];
-  const [firstAction, secondAction] =
-    order === "p1First" ? [p1Action, p2Action] : [p2Action, p1Action];
+  const turnOrderKeys = determineTurnOrder(state, actions);
 
   // ── Helper: apply one action ──────────────────────────────────────────────
-  function applyAction(actorKey, targetKey, action) {
+  function applyAction(actorKey, action) {
+    if (state[actorKey].active.currentHp <= 0) return; // fainted before they could move
+
     if (action.type === ACTION_TYPE.SWITCH) {
       const result = executeSwitch(state[actorKey], action.switchTo, log);
       state[actorKey] = result.playerState;
@@ -712,15 +706,10 @@ function resolveTurn(battleState, p1Action, p2Action, opts = {}) {
       return;
     }
 
-    // Move action
     const actor = state[actorKey].active;
-    const target = state[targetKey].active;
-
-    // Check if actor is incapacitated by status
     const actCheck = canActThisTurn(actor, opts);
     log = [...log, ...actCheck.log];
 
-    // Handle status state changes (sleep decrement, thaw, wake)
     if (actCheck.wake) {
       state[actorKey].active = { ...state[actorKey].active, status: STATUS.NONE, sleepTurns: 0 };
     } else if (actCheck.thaw) {
@@ -731,35 +720,62 @@ function resolveTurn(battleState, p1Action, p2Action, opts = {}) {
 
     if (!actCheck.canAct) return;
 
-    // Execute the move
-    const result = executeMove(
-      state[actorKey].active,
-      state[targetKey].active,
-      action.move,
-      log,
-      events,
-      targetKey,
-      opts
-    );
-    state[actorKey].active = result.attacker;
-    state[targetKey].active = result.defender;
-    log = result.log;
-    events = result.events;
+    // Determine targets
+    const isMultiTarget = ["earthquake", "surf", "blizzard", "thunder", "self-destruct", "explosion"].includes(action.move.name);
+    
+    let targets = [];
+    const playerKeys = Object.keys(state).filter(k => k !== "turn" && k !== "winner");
+
+    if (isMultiTarget) {
+      // Hit all alive opponents
+      targets = playerKeys.filter(k => k !== actorKey && state[k].active.currentHp > 0);
+    } else {
+      // Single target
+      if (action.targetId && state[action.targetId] && state[action.targetId].active.currentHp > 0) {
+        targets = [action.targetId];
+      } else {
+         // Target missing or fainted, pick a random alive opponent
+         const aliveOpponents = playerKeys.filter(k => k !== actorKey && state[k].active.currentHp > 0);
+         if (aliveOpponents.length > 0) {
+           const randTarget = aliveOpponents[Math.floor(Math.random() * aliveOpponents.length)];
+           targets = [randTarget];
+         }
+      }
+    }
+
+    if (targets.length === 0) {
+       log.push(`But there was no target!`);
+       return;
+    }
+
+    for (const tKey of targets) {
+       const def = state[tKey].active;
+       if (def.currentHp <= 0) continue;
+
+       const result = executeMove(
+         state[actorKey].active,
+         def,
+         action.move,
+         log,
+         events,
+         tKey,
+         opts
+       );
+       state[actorKey].active = result.attacker;
+       state[tKey].active = result.defender;
+       log = result.log;
+       events = result.events;
+    }
   }
 
-  // ── First actor's action ──────────────────────────────────────────────────
-  applyAction(firstPlayerKey, secondPlayerKey, firstAction);
-
-  // If second actor fainted from first actor's attack, skip their action
-  if (state[secondPlayerKey].active.currentHp > 0) {
-    // ── Second actor's action ───────────────────────────────────────────────
-    applyAction(secondPlayerKey, firstPlayerKey, secondAction);
-  } else {
-    log.push(`${state[secondPlayerKey].active.name} can no longer fight!`);
+  // Iterate over actions in turn order
+  for (const k of turnOrderKeys) {
+     applyAction(k, actions[k]);
   }
 
   // ── End-of-turn effects ───────────────────────────────────────────────────
-  for (const playerKey of ["p1", "p2"]) {
+  const playerKeys = Object.keys(state).filter(k => k !== "turn" && k !== "winner");
+  for (const playerKey of playerKeys) {
     if (state[playerKey].active.currentHp > 0) {
       const result = applyEndOfTurnEffects(state[playerKey].active, log);
       state[playerKey].active = result.pokemon;
@@ -767,22 +783,17 @@ function resolveTurn(battleState, p1Action, p2Action, opts = {}) {
     }
   }
 
-  // ── Increment turn counter ────────────────────────────────────────────────
   state.turn += 1;
 
   // ── Check win conditions ──────────────────────────────────────────────────
-  const p1Lost = checkWinCondition(state.p1);
-  const p2Lost = checkWinCondition(state.p2);
+  const aliveKeys = playerKeys.filter(k => !checkWinCondition(state[k]));
 
-  if (p1Lost && p2Lost) {
+  if (aliveKeys.length === 1) {
+    state.winner = aliveKeys[0];
+    log.push(`${state.winner} is the last one standing and wins the battle!`);
+  } else if (aliveKeys.length === 0 && playerKeys.length > 0) {
     state.winner = "draw";
-    log.push("Both trainers are out of usable Pokémon! It's a draw!");
-  } else if (p1Lost) {
-    state.winner = "p2";
-    log.push("Player 1 has no more Pokémon! Player 2 wins!");
-  } else if (p2Lost) {
-    state.winner = "p1";
-    log.push("Player 2 has no more Pokémon! Player 1 wins!");
+    log.push("Everyone fainted! It's a draw!");
   }
 
   return { newState: state, log, events };
