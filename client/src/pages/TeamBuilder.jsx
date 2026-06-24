@@ -318,12 +318,12 @@ export default function TeamBuilder() {
           <div className="border-l border-red-700/50 pl-4 ml-2">
             {user ? (
               <div className="flex items-center gap-3">
-                <span className="text-sm font-black text-white uppercase tracking-wider">{user.username}</span>
                 <button 
-                  onClick={logout}
-                  className="px-3 py-1.5 bg-red-900/50 hover:bg-red-900 text-red-200 text-xs font-bold rounded-lg border border-red-800 transition-colors uppercase"
+                  onClick={() => navigate('/profile')}
+                  className="text-sm font-black text-white hover:text-yellow-300 uppercase tracking-wider transition-colors drop-shadow-sm flex items-center gap-2"
+                  title="View Profile"
                 >
-                  Logout
+                  <span className="text-xl">👦</span> {user.username}
                 </button>
               </div>
             ) : (
