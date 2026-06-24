@@ -169,6 +169,32 @@ io.on("connection", (socket) => {
     }
   });
 
+  // ── Submit Forfeit ──────────────────────────────────────────────────────────
+  socket.on("submit-forfeit", () => {
+    try {
+      const info = rooms.getRoomBySocket(socket.id);
+      if (!info) return socket.emit("error", { message: "You are not in a room." });
+
+      const { code, playerKey, room } = info;
+      const result = rooms.submitForfeit(code, playerKey);
+
+      if (!result.success) return socket.emit("error", { message: result.error });
+
+      log(`forfeit  ${code}  ${playerKey}`);
+      
+      const playerName = room.players[playerKey].name || (playerKey === "p1" ? "Player 1" : "Player 2");
+      const oppName = room.players[result.winner].name || (result.winner === "p1" ? "Player 1" : "Player 2");
+      const logMsg = [`${playerName} fled the battle!`, `${oppName} wins by default!`];
+
+      broadcastPlayerStates(room, "turn-result", { log: logMsg });
+      io.to(code).emit("battle-over", { winner: result.winner, log: logMsg });
+
+    } catch (err) {
+      console.error("[submit-forfeit]", err);
+      socket.emit("error", { message: "Failed to forfeit." });
+    }
+  });
+
   // ── Submit Rematch ──────────────────────────────────────────────────────────
   socket.on("submit-rematch", () => {
     try {
