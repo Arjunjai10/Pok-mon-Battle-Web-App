@@ -329,9 +329,8 @@ export default function Lobby() {
           className="fixed inset-0 z-50 bg-[var(--color-bg-deep)] flex flex-col items-center justify-center p-4 overflow-hidden cursor-pointer"
           onClick={skipVsScreen}
         >
-          {/* Animated Background Elements - Explosive Bright */}
+          {/* Animated Background Elements */}
           <div className="absolute inset-0 opacity-100 bg-[radial-gradient(circle_at_center,var(--color-accent)_0%,var(--color-danger)_50%,var(--color-bg-deep)_100%)] animate-pulse-glow"></div>
-          
           <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_48%,white_49%,white_51%,transparent_52%)] opacity-50"></div>
           <div className="absolute inset-0 bg-[linear-gradient(-45deg,transparent_48%,white_49%,white_51%,transparent_52%)] opacity-50"></div>
 
@@ -375,18 +374,6 @@ export default function Lobby() {
                     src={opp.active.spriteUrl} 
                     alt="Opponent's active Pokémon" 
                     className="w-32 h-32 md:w-48 md:h-48 mx-auto drop-shadow-[0_0_15px_rgba(255,255,255,0.8)] filter brightness-110 contrast-125 scale-x-[-1]"
-                    style={{ imageRendering: 'pixelated' }}
-                  />
-                </div>
-              ))}
-            </div>
-
-          </div>
-        </div>
-      )}
-    </div>
-                    alt="Opponent's active Pokémon" 
-                    className="w-48 h-48 mx-auto drop-shadow-[0_0_15px_rgba(255,255,255,0.8)] filter brightness-110 contrast-125"
                     style={{ imageRendering: 'pixelated' }}
                   />
                 </div>
