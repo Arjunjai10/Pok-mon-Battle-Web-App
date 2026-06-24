@@ -18,7 +18,7 @@ export default function HpBar({ current, max, animate = true, showText = true, s
       ? "var(--color-accent)"      // yellow
       : "var(--color-danger)";     // red
 
-  const heights = { sm: "h-1.5", md: "h-2.5", lg: "h-3.5" };
+  const heights = { sm: "h-3", md: "h-4", lg: "h-5" };
 
   return (
     <div className="w-full">
@@ -30,7 +30,7 @@ export default function HpBar({ current, max, animate = true, showText = true, s
         </div>
       )}
       <div
-        className={`w-full rounded-full overflow-hidden ${heights[size]}`}
+        className={`w-full rounded-lg overflow-hidden border-4 border-[var(--color-text-primary)] shadow-[0_2px_0_var(--color-text-primary)] ${heights[size]}`}
         style={{ backgroundColor: "var(--color-border)" }}
         role="progressbar"
         aria-valuenow={current}
@@ -39,12 +39,12 @@ export default function HpBar({ current, max, animate = true, showText = true, s
         aria-label={`HP: ${current}/${max}`}
       >
         <div
-          className="h-full rounded-full"
+          className="h-full"
           style={{
             width: `${pct}%`,
             backgroundColor: barColor,
             transition: animate ? "width 0.6s ease, background-color 0.4s ease" : "none",
-            boxShadow: `0 0 6px 1px ${barColor}55`,
+            borderRight: pct > 0 && pct < 100 ? "4px solid var(--color-text-primary)" : "none"
           }}
         />
       </div>

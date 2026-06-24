@@ -291,7 +291,7 @@ export default function Battle() {
           {renderStatusIcon(p.status)}
           {myEvents.map(e => <FloatingDamage key={e.id} event={e} />)}
         </div>
-        <div className={`group relative cursor-help glass-card p-3 w-full sm:w-auto sm:flex-1 max-w-[240px] transition-opacity duration-500 ${p.currentHp <= 0 ? "opacity-30" : ""}`}>
+        <div className={`group relative cursor-help bg-white border-4 border-[var(--color-text-primary)] rounded-2xl p-3 w-full sm:w-auto sm:flex-1 max-w-[240px] transition-opacity duration-500 shadow-[0_6px_0_var(--color-text-primary)] ${p.currentHp <= 0 ? "opacity-30" : ""}`}>
           <div className="flex justify-between items-baseline mb-1">
             <div className="font-bold text-[var(--color-text-primary)] text-sm sm:text-base">
               {p.name}
@@ -338,7 +338,7 @@ export default function Battle() {
     <div className="flex flex-col h-[100dvh] bg-[var(--color-bg-deep)] p-2 sm:p-4 max-w-6xl mx-auto gap-2 sm:gap-4 font-body">
       
       {/* Header */}
-      <div className="flex justify-between items-center glass-card px-4 py-2 flex-shrink-0">
+      <div className="flex justify-between items-center bg-white border-4 border-[var(--color-text-primary)] rounded-xl px-4 py-2 flex-shrink-0 shadow-[0_4px_0_var(--color-text-primary)]">
         <div className="text-sm font-bold text-[var(--color-text-secondary)]">
           Turn {turn}
         </div>
@@ -356,10 +356,10 @@ export default function Battle() {
         <div className="flex flex-col flex-1 gap-2 sm:gap-4 min-w-0">
           
           {/* Battle Field */}
-          <div className="flex-1 glass-card relative p-4 sm:p-6 flex flex-col justify-between overflow-y-auto bg-gradient-to-b from-[var(--color-bg-deep)] to-[var(--color-bg-panel)]">
+          <div className="flex-1 bg-gradient-to-b from-green-300 to-green-500 border-4 border-[var(--color-text-primary)] rounded-3xl relative p-4 sm:p-6 flex flex-col justify-between overflow-y-auto shadow-[inset_0_10px_20px_rgba(0,0,0,0.1)]">
             {/* Environment Decor */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(ellipse_at_center,_var(--color-primary)_0%,_transparent_70%)]"></div>
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8Y2lyY2xlIGN4PSIyIiBjeT0iMiIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIvPgo8L3N2Zz4=')] opacity-50"></div>
+            <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(ellipse_at_center,_#ffffff_0%,_transparent_70%)]"></div>
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8Y2lyY2xlIGN4PSI0IiBjeT0iNCIgcj0iMiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIvPgo8L3N2Zz4=')] opacity-50"></div>
             
             {/* Opponent (Top Right) */}
             <div className="self-end w-full flex justify-end">
@@ -373,7 +373,7 @@ export default function Battle() {
           </div>
 
           {/* Controls Area */}
-          <div className="glass-card p-3 sm:p-4 flex-shrink-0 min-h-[160px] lg:min-h-[14rem] flex flex-col justify-center">
+          <div className="bg-white border-4 border-[var(--color-text-primary)] rounded-3xl p-3 sm:p-4 flex-shrink-0 min-h-[160px] lg:min-h-[14rem] flex flex-col justify-center shadow-[0_8px_0_var(--color-text-primary)]">
             {phase === "waiting" && (
               <div className="flex flex-col h-full items-center justify-center text-[var(--color-text-secondary)] gap-3">
                 <div className="flex items-center gap-2 animate-pulse">
@@ -399,10 +399,11 @@ export default function Battle() {
                         key={i}
                         onClick={() => handleMove(m)}
                         disabled={m.currentPp <= 0}
-                        className="group relative flex flex-col items-start justify-center px-2 sm:px-3 py-2 rounded disabled:opacity-50 transition-colors border move-btn cursor-pointer"
+                        className="group relative flex flex-col items-start justify-center px-2 sm:px-3 py-2 rounded-xl disabled:opacity-50 transition-all border-4 move-btn cursor-pointer hover:-translate-y-1 active:translate-y-1 active:shadow-none"
                         style={{
                           borderColor: `var(--color-type-${m.type.toLowerCase()})`,
-                          backgroundColor: `color-mix(in srgb, var(--color-type-${m.type.toLowerCase()}) 15%, var(--color-bg-panel))`,
+                          backgroundColor: `color-mix(in srgb, var(--color-type-${m.type.toLowerCase()}) 15%, #ffffff)`,
+                          boxShadow: m.currentPp > 0 ? `0 4px 0 var(--color-type-${m.type.toLowerCase()})` : 'none'
                         }}
                       >
                         <div className="flex justify-between w-full items-center">
@@ -440,7 +441,7 @@ export default function Battle() {
                         key={b.benchIndex}
                         onClick={() => handleSwitch(b.benchIndex)}
                         disabled={b.currentHp <= 0}
-                        className="flex items-center gap-2 p-1.5 bg-[var(--color-bg-panel)] border-2 border-[var(--color-border)] rounded-xl disabled:opacity-50 transition-all text-left bench-btn cursor-pointer"
+                        className="flex items-center gap-2 p-1.5 bg-gray-50 border-4 border-[var(--color-border)] rounded-xl disabled:opacity-50 transition-all text-left bench-btn cursor-pointer hover:-translate-y-1 hover:shadow-[0_4px_0_var(--color-border)] active:translate-y-1 active:shadow-none"
                       >
                         <img src={b.spriteUrl} alt={b.name} className="w-8 h-8 object-contain drop-shadow-md" />
                         <div className="flex-1 min-w-0">
