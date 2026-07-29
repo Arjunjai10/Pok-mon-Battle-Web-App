@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import HpBar from "../components/HpBar";
 import BattleLog from "../components/BattleLog";
+import PokemonSprite from "../components/PokemonSprite";
 
 export default function Battle() {
   const navigate = useNavigate();
@@ -219,21 +220,15 @@ export default function Battle() {
   const renderStatusIcon = (status) => {
     if (!status) return null;
     const colors = {
-      burn: "bg-red-500 border-red-300 text-white",
-      poison: "bg-purple-600 border-purple-300 text-white",
-      paralysis: "bg-yellow-400 border-yellow-200 text-black",
-      sleep: "bg-slate-500 border-slate-300 text-white",
-      freeze: "bg-cyan-400 border-cyan-100 text-black",
+      burn: "bg-gradient-to-r from-red-600 to-orange-500 text-white shadow-[0_0_10px_rgba(239,68,68,0.8)] border-white/40",
+      poison: "bg-gradient-to-r from-purple-700 to-fuchsia-600 text-white shadow-[0_0_10px_rgba(147,51,234,0.8)] border-white/40",
+      paralysis: "bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black shadow-[0_0_10px_rgba(245,158,11,0.8)] border-slate-900/40",
+      sleep: "bg-gradient-to-r from-slate-600 to-slate-500 text-white shadow-[0_0_10px_rgba(100,116,139,0.8)] border-white/40",
+      freeze: "bg-gradient-to-r from-cyan-500 to-blue-400 text-slate-950 font-black shadow-[0_0_10px_rgba(6,182,212,0.8)] border-white/60",
     };
-    const labels = {
-      burn: "BRN",
-      poison: "PSN",
-      paralysis: "PAR",
-      sleep: "SLP",
-      freeze: "FRZ",
-    };
+    const labels = { burn: "BRN", poison: "PSN", paralysis: "PAR", sleep: "SLP", freeze: "FRZ" };
     return (
-      <div className={`absolute -bottom-2 sm:-bottom-0 -right-2 sm:-right-4 px-2 py-0.5 rounded-sm text-[10px] sm:text-xs font-black border shadow-md ${colors[status]} z-10 tracking-wider`}>
+      <div className={`absolute -top-2 right-0 px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-black border z-30 tracking-wider uppercase animate-bounce ${colors[status]}`}>
         {labels[status]}
       </div>
     );
@@ -246,15 +241,15 @@ export default function Battle() {
     };
     
     return (
-      <div className="flex gap-1 flex-wrap mt-1">
+      <div className="flex gap-1.5 flex-wrap mt-2">
         {Object.entries(stages).map(([stat, val]) => {
           if (val === 0) return null;
           const isPos = val > 0;
-          const color = isPos ? "text-green-500" : "text-red-400";
-          const arrow = isPos ? "↑" : "↓";
+          const color = isPos ? "text-emerald-400 border-emerald-500/40 bg-emerald-500/10" : "text-rose-400 border-rose-500/40 bg-rose-500/10";
+          const arrow = isPos ? "▲" : "▼";
           return (
-            <div key={stat} title={`${stat}: ${val}`} className={`text-[9px] font-bold ${color} bg-[var(--color-bg-deep)] px-1 rounded border border-[var(--color-border)] shadow-sm flex items-center`}>
-              {icons[stat] || ""} {arrow}{Math.abs(val)}
+            <div key={stat} title={`${stat}: ${val}`} className={`text-[10px] font-black ${color} px-1.5 py-0.5 rounded-md border shadow-sm flex items-center gap-1`}>
+              <span>{icons[stat] || ""}</span> <span>{arrow}{Math.abs(val)}</span>
             </div>
           );
         })}
@@ -274,25 +269,25 @@ export default function Battle() {
     if (!visible || event.type === "faint") return null;
 
     let subtext = "";
-    let color = "text-[var(--color-text-primary)]";
+    let color = "text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]";
     if (event.effectiveness >= 2) {
-      subtext = "Super Effective!";
-      color = "text-[var(--color-warning)]";
+      subtext = "SUPER EFFECTIVE!";
+      color = "text-amber-400 drop-shadow-[0_0_15px_rgba(245,158,11,0.9)]";
     } else if (event.effectiveness <= 0.5 && event.effectiveness > 0) {
       subtext = "Not very effective...";
-      color = "text-gray-400";
+      color = "text-slate-400";
     } else if (event.effectiveness === 0) {
       subtext = "No effect!";
-      color = "text-gray-500";
+      color = "text-slate-500";
     }
 
     return (
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 pointer-events-none animate-float-up z-50 flex flex-col items-center">
-        <span className={`text-4xl font-black ${color} drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] tabular-nums`}>
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 pointer-events-none animate-float-up z-[100] flex flex-col items-center">
+        <span className={`text-5xl font-black font-display ${color} tabular-nums stroke-black stroke-2`}>
           -{event.amount}
         </span>
         {subtext && (
-          <span className={`text-sm font-bold ${color} drop-shadow-md mt-1 whitespace-nowrap`}>
+          <span className={`text-xs font-black ${color} tracking-widest uppercase mt-1 px-2.5 py-1 rounded-full bg-slate-950/90 border border-white/20 whitespace-nowrap shadow-xl`}>
             {subtext}
           </span>
         )}
@@ -305,61 +300,77 @@ export default function Battle() {
     const myEvents = floatingEvents.filter(e => e.targetKey === targetKey || e.targetKey === (isOpponent ? opponents.find(o=>o.playerKey===playerKey)?.id : me.id));
 
     return (
-      <div className={`relative flex flex-col sm:flex-row items-center sm:items-end gap-2 sm:gap-4 ${isOpponent ? "" : "sm:flex-row-reverse"}`}>
+      <div className={`relative flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-6 ${isOpponent ? "" : "sm:flex-row-reverse"}`}>
         
         {/* Target Selection Overlay */}
         {pendingMove && isOpponent && p.currentHp > 0 && (
           <button 
             onClick={() => handleSelectTarget(playerKey)}
-            className="absolute inset-0 bg-red-500/30 border-4 border-red-500 z-[100] cursor-pointer animate-pulse rounded-2xl flex items-center justify-center text-white font-black uppercase text-xl shadow-[0_0_15px_red] m-[-8px]"
+            className="absolute inset-0 bg-red-600/40 backdrop-blur-sm border-2 border-red-400 z-[100] cursor-pointer animate-pulse rounded-3xl flex items-center justify-center text-white font-display font-black uppercase tracking-widest text-2xl shadow-[0_0_35px_rgba(239,68,68,0.8)] hover:scale-105 transition-all"
           >
-            Target
+            🎯 Lock Target
           </button>
         )}
 
-        <div className="relative w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0">
-          <img 
-            src={p.spriteUrl} 
-            alt={p.name} 
-            className={`w-full h-full object-contain ${p.currentHp <= 0 ? "animate-faint-sink" : "transition-all duration-500"}`}
-          />
+        {/* Monster Display Area & Arena Pedestal */}
+        <div className="relative flex flex-col items-center justify-center pt-4">
           {renderStatusIcon(p.status)}
-          {myEvents.map(e => <FloatingDamage key={e.id} event={e} />)}
+          
+          <div className="relative w-32 h-32 sm:w-44 sm:h-44 flex items-center justify-center z-10 p-2">
+            <PokemonSprite 
+              id={p.id} 
+              spriteUrl={p.spriteUrl} 
+              name={p.name} 
+              variant={isOpponent ? "front-gif" : "back-gif"}
+              animate={p.currentHp > 0}
+              className={`w-full h-full object-contain filter drop-shadow-[0_15px_20px_rgba(0,0,0,0.8)] ${p.currentHp <= 0 ? "animate-faint-sink opacity-25 grayscale" : "transition-transform duration-300 sm:scale-110"}`}
+            />
+            {myEvents.map(e => <FloatingDamage key={e.id} event={e} />)}
+          </div>
+
+          {/* Glowing Energy Pedestal Ring beneath monster */}
+          <div className={`w-28 sm:w-40 h-8 -mt-7 rounded-[100%] border-2 filter blur-[1px] pointer-events-none z-0 ${
+            isOpponent ? "bg-red-500/20 border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.4)]" : "bg-blue-500/25 border-blue-400/60 shadow-[0_0_25px_rgba(59,130,246,0.5)]"
+          }`}></div>
         </div>
-        <div className={`group relative cursor-help bg-white border-4 border-[var(--color-text-primary)] rounded-2xl p-3 w-full sm:w-auto sm:flex-1 max-w-[240px] transition-opacity duration-500 shadow-[0_6px_0_var(--color-text-primary)] ${p.currentHp <= 0 ? "opacity-30" : ""}`}>
-          <div className="flex justify-between items-baseline mb-1">
-            <div className="font-bold text-[var(--color-text-primary)] text-sm sm:text-base truncate">
-              {playerName ? `${playerName}'s ` : ''}{p.name}
+
+        {/* Telemetry HUD Box */}
+        <div className={`group relative bg-slate-900/90 border border-white/20 rounded-3xl p-4 w-full sm:w-auto sm:flex-1 max-w-[280px] transition-all duration-300 shadow-[0_10px_30px_rgba(0,0,0,0.6)] backdrop-blur-md ${p.currentHp <= 0 ? "opacity-40 grayscale" : "hover:border-blue-400/50"}`}>
+          <div className="flex justify-between items-baseline mb-2 border-b border-white/10 pb-1.5">
+            <div className="font-extrabold text-white text-sm sm:text-base capitalize truncate tracking-wide flex items-center gap-2">
+              <span>{p.name.replace(/-/g, " ")}</span>
+              {playerName && <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 uppercase font-black tracking-wider">{playerName}</span>}
             </div>
-            <div className="text-[10px] sm:text-xs font-mono text-[var(--color-text-muted)] ml-1 flex-shrink-0">Lv.100</div>
+            <div className="text-[11px] font-mono font-black text-blue-400 ml-2 flex-shrink-0">L100</div>
           </div>
           <HpBar current={p.currentHp} max={p.maxHp} />
           {renderStatStages(p.statStages)}
           
+          {/* Detailed Telemetry Hover Pop-out */}
           {p.currentStats && (
-            <div className={`hidden group-hover:block absolute ${isOpponent ? 'top-full left-0 mt-2' : 'bottom-full right-0 mb-2'} w-64 p-3 bg-[var(--color-bg-card)] border-4 border-[var(--color-text-primary)] rounded-2xl shadow-[0_6px_0_var(--color-text-primary)] text-left z-[100] text-xs cursor-default`}>
-              <div className="font-bold text-[var(--color-text-primary)] mb-1 text-sm flex justify-between items-center">
-                <span>{p.name}</span>
+            <div className={`hidden group-hover:block absolute ${isOpponent ? 'top-full left-0 mt-3' : 'bottom-full right-0 mb-3'} w-64 p-4 bg-slate-950 border border-white/20 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.9)] text-left z-[100] text-xs cursor-default backdrop-blur-xl`}>
+              <div className="font-extrabold text-white mb-2 text-sm flex justify-between items-center pb-2 border-b border-white/10">
+                <span className="capitalize">{p.name.replace(/-/g, " ")}</span>
                 <div className="flex gap-1">
                   {p.types.map(t => (
-                    <span key={t} className="px-1.5 py-0.5 rounded uppercase tracking-wider text-[9px] text-white" style={{ backgroundColor: `var(--color-type-${t.toLowerCase()})` }}>{t}</span>
+                    <span key={t} className="px-1.5 py-0.5 rounded uppercase font-black text-[9px] text-white border border-white/20" style={{ backgroundColor: `var(--color-type-${t.toLowerCase()})` }}>{t}</span>
                   ))}
                 </div>
               </div>
-              <div className="text-[var(--color-text-secondary)] mb-1">
+              <div className="text-slate-300 font-bold mb-1 font-mono text-[11px]">
                 HP: {Math.max(0, p.currentHp)} / {p.maxHp} ({Math.round(Math.max(0, p.currentHp)/p.maxHp*100)}%)
               </div>
               {p.heldItem && (
-                <div className="text-[var(--color-text-secondary)] mb-2 capitalize">
-                  Item: <span className="text-[var(--color-text-primary)]">{p.heldItem.replace(/-/g, " ")}</span>
+                <div className="text-slate-400 mb-2.5 capitalize font-medium text-xs">
+                  Held Item: <span className="text-amber-400 font-bold">{p.heldItem.replace(/-/g, " ")}</span>
                 </div>
               )}
-              <div className="grid grid-cols-5 gap-1 pt-2 border-t border-[var(--color-border)] text-center text-[10px]">
-                <div><div className="text-[var(--color-text-muted)] font-bold">Atk</div><div className="text-[var(--color-text-primary)]">{p.currentStats.attack}</div></div>
-                <div><div className="text-[var(--color-text-muted)] font-bold">Def</div><div className="text-[var(--color-text-primary)]">{p.currentStats.defense}</div></div>
-                <div><div className="text-[var(--color-text-muted)] font-bold">SpA</div><div className="text-[var(--color-text-primary)]">{p.currentStats.specialAttack}</div></div>
-                <div><div className="text-[var(--color-text-muted)] font-bold">SpD</div><div className="text-[var(--color-text-primary)]">{p.currentStats.specialDefense}</div></div>
-                <div><div className="text-[var(--color-text-muted)] font-bold">Spe</div><div className="text-[var(--color-text-primary)]">{p.currentStats.speed}</div></div>
+              <div className="grid grid-cols-5 gap-1 pt-2 border-t border-white/10 text-center font-mono">
+                <div><div className="text-slate-500 font-bold text-[9px]">ATK</div><div className="text-white font-bold">{p.currentStats.attack}</div></div>
+                <div><div className="text-slate-500 font-bold text-[9px]">DEF</div><div className="text-white font-bold">{p.currentStats.defense}</div></div>
+                <div><div className="text-slate-500 font-bold text-[9px]">SPA</div><div className="text-white font-bold">{p.currentStats.specialAttack}</div></div>
+                <div><div className="text-slate-500 font-bold text-[9px]">SPD</div><div className="text-white font-bold">{p.currentStats.specialDefense}</div></div>
+                <div><div className="text-slate-500 font-bold text-[9px]">SPE</div><div className="text-white font-bold">{p.currentStats.speed}</div></div>
               </div>
             </div>
           )}
@@ -369,129 +380,146 @@ export default function Battle() {
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-[var(--color-bg-deep)] p-2 sm:p-4 max-w-[1400px] mx-auto gap-2 sm:gap-4 font-body">
+    <div className="flex flex-col h-[100dvh] bg-[var(--color-bg-deep)] p-2 sm:p-4 max-w-[1500px] mx-auto gap-2 sm:gap-4 font-body text-white selection:bg-blue-500 selection:text-white">
       
-      {/* Header */}
-      <div className="flex justify-between items-center bg-white border-4 border-[var(--color-text-primary)] rounded-xl px-4 py-2 flex-shrink-0 shadow-[0_4px_0_var(--color-text-primary)] flex-wrap">
+      {/* ══ Top Match Telemetry Header ══ */}
+      <header className="flex justify-between items-center bg-slate-900/90 backdrop-blur-xl border border-white/15 rounded-2xl px-5 py-3 flex-shrink-0 shadow-[0_8px_30px_rgba(0,0,0,0.6)] flex-wrap gap-2">
         <div className="flex items-center gap-4">
-          <div className="text-sm font-bold text-[var(--color-text-secondary)]">
-            Turn {turn}
+          <div className="flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-400/30 rounded-xl">
+            <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+            <span className="text-xs font-black uppercase tracking-widest text-blue-300">
+              Turn {turn}
+            </span>
           </div>
+          
           <button
             onClick={() => {
-              if (phase !== 'battle-over' && window.confirm("Are you sure you want to run? You will forfeit the match!")) {
+              if (phase !== 'battle-over' && window.confirm("Are you sure you want to forfeit? You will surrender the match!")) {
                 socket.emit("submit-forfeit");
               }
             }}
             disabled={phase === 'battle-over'}
-            className="px-3 py-1 bg-[var(--color-danger)] text-white border-2 border-red-800 rounded-lg font-black uppercase text-[10px] sm:text-xs hover:-translate-y-0.5 hover:shadow-[0_2px_0_#7f1d1d] active:translate-y-0 active:shadow-none transition-all disabled:opacity-50"
+            className="px-3.5 py-1.5 bg-rose-500/15 text-rose-300 border border-rose-500/40 rounded-xl font-black uppercase tracking-widest text-[11px] hover:bg-rose-500 hover:text-white hover:shadow-[0_0_15px_rgba(244,63,94,0.6)] transition-all disabled:opacity-40 disabled:pointer-events-none"
           >
-            Run
+            🚩 Surrender
           </button>
         </div>
-        <div className="flex gap-4">
+        
+        <div className="flex gap-6 items-center">
           {opponents.map(opp => (
-            <div key={opp.playerKey} className="flex gap-1" title={`${opp.name}'s Bench`}>
-              {opp.bench.map((b, i) => (
-                <div key={i} className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full ${b.currentHp > 0 ? "bg-[var(--color-primary)]" : "bg-[var(--color-danger)] opacity-50"}`} />
-              ))}
+            <div key={opp.playerKey} className="flex items-center gap-2 bg-slate-950/80 px-3 py-1.5 rounded-xl border border-white/10" title={`${opp.name}'s Squad Status`}>
+              <span className="text-slate-400 font-extrabold text-xs uppercase tracking-wider">{opp.name}:</span>
+              <div className="flex gap-1.5">
+                {opp.bench.map((b, i) => (
+                  <div key={i} className={`w-3 h-3 rounded-full border border-white/20 transition-all ${b.currentHp > 0 ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" : "bg-slate-800 opacity-40"}`} />
+                ))}
+              </div>
             </div>
           ))}
         </div>
-      </div>
+      </header>
 
-      {/* Main Layout Split */}
+      {/* ══ Main Battle Split ══ */}
       <div className="flex flex-col lg:flex-row gap-2 sm:gap-4 flex-1 min-h-0">
         
-        {/* Left Column (Battle Field + Controls) */}
+        {/* Left Column (Battle Arena + Command Deck) */}
         <div className="flex flex-col flex-1 gap-2 sm:gap-4 min-w-0">
           
-          {/* Battle Field */}
-          <div className="flex-1 bg-gradient-to-b from-green-300 to-green-500 border-4 border-[var(--color-text-primary)] rounded-3xl relative p-4 sm:p-6 flex flex-col justify-between overflow-y-auto shadow-[inset_0_10px_20px_rgba(0,0,0,0.1)]">
-            <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(ellipse_at_center,_#ffffff_0%,_transparent_70%)]"></div>
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8Y2lyY2xlIGN4PSI0IiBjeT0iNCIgcj0iMiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIvPgo8L3N2Zz4=')] opacity-50 pointer-events-none"></div>
+          {/* Cyber Stadium Battle Field */}
+          <div className="flex-1 bg-slate-950/95 border border-white/15 rounded-3xl relative p-4 sm:p-8 flex flex-col justify-between overflow-y-auto shadow-[inner_0_0_70px_rgba(0,0,0,0.9)] backdrop-blur-xl">
+            {/* Arena Grid Architecture & Ambient Illumination */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(37,99,235,0.12)_0%,transparent_60%)] pointer-events-none"></div>
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none"></div>
             
-            {/* Opponents (Top) */}
-            <div className="w-full flex flex-wrap justify-center sm:justify-end gap-4 relative z-10">
+            {/* Opponents (Top / Far side of stadium) */}
+            <div className="w-full flex flex-wrap justify-center sm:justify-end gap-6 relative z-10 pb-4">
               {opponents.map(opp => (
-                <div key={opp.playerKey} className={`${opponents.length > 2 ? 'scale-75 origin-top-right' : ''}`}>
+                <div key={opp.playerKey} className={`${opponents.length > 2 ? 'scale-85 origin-top-right' : ''}`}>
                   {renderActivePokemon(opp.active, true, opp.playerKey, opp.name)}
                 </div>
               ))}
             </div>
             
-            {/* Player (Bottom Left) */}
-            <div className="self-start w-full mt-4 sm:mt-8 relative z-10">
+            {/* Player (Bottom / Near side of stadium) */}
+            <div className="self-start w-full mt-6 relative z-10 pt-4 border-t border-white/5">
               {renderActivePokemon(me.active, false, null)}
             </div>
           </div>
 
-          {/* Controls Area */}
-          <div className="bg-white border-4 border-[var(--color-text-primary)] rounded-3xl p-3 sm:p-4 flex-shrink-0 min-h-[160px] lg:min-h-[14rem] flex flex-col justify-center shadow-[0_8px_0_var(--color-text-primary)] relative">
+          {/* Command Deck Action Console */}
+          <div className="bg-slate-900/95 border border-white/15 rounded-3xl p-4 flex-shrink-0 min-h-[170px] lg:min-h-[15rem] flex flex-col justify-center shadow-[0_15px_50px_rgba(0,0,0,0.7)] backdrop-blur-xl relative">
             
             {pendingMove && (
-              <div className="absolute inset-0 bg-white/90 backdrop-blur z-20 rounded-2xl flex flex-col items-center justify-center border-4 border-red-500 gap-4">
-                <span className="font-black text-xl text-[var(--color-danger)] uppercase">Select Target for {pendingMove.name}</span>
+              <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md z-30 rounded-3xl flex flex-col items-center justify-center border border-red-500/50 gap-4 p-4">
+                <span className="font-display font-black text-2xl text-red-400 uppercase tracking-wide drop-shadow-md">
+                  🎯 Select Target for <span className="text-white">{pendingMove.name}</span>
+                </span>
                 <button 
                   onClick={() => setPendingMove(null)}
-                  className="px-6 py-2 bg-[var(--color-bg-deep)] text-[var(--color-text-primary)] font-bold border-2 border-[var(--color-border)] rounded-xl"
+                  className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-xs uppercase tracking-widest border border-white/15 rounded-xl shadow-lg transition-all"
                 >
-                  Cancel
+                  Cancel Attack
                 </button>
               </div>
             )}
 
             {phase === "waiting" && (
-              <div className="flex flex-col h-full items-center justify-center text-[var(--color-text-secondary)] gap-3">
-                <div className="flex items-center gap-2 animate-pulse">
-                  <div className="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)]"></div>
-                  <span className="font-medium">Waiting for other players...</span>
+              <div className="flex flex-col h-full items-center justify-center text-slate-300 gap-4 py-4">
+                <div className="flex items-center gap-3 animate-pulse bg-blue-500/10 border border-blue-500/30 px-6 py-3 rounded-2xl shadow-[0_0_30px_rgba(59,130,246,0.2)]">
+                  <div className="w-3 h-3 rounded-full bg-blue-400 animate-ping"></div>
+                  <span className="font-black text-sm uppercase tracking-widest text-blue-200">Awaiting opponent commands...</span>
                 </div>
                 {lockedAction && (
-                  <div className="text-xs text-[var(--color-text-muted)] bg-[var(--color-bg-deep)] px-3 py-1.5 rounded-full border border-[var(--color-border)]">
-                    Locked in: <strong className="text-[var(--color-text-primary)]">{lockedAction.type === "move" ? lockedAction.move.name : "Switch"}</strong>
+                  <div className="text-xs text-slate-400 font-mono bg-slate-950 px-4 py-2 rounded-xl border border-white/10">
+                    Action Locked: <strong className="text-amber-400 uppercase tracking-wider">{lockedAction.type === "move" ? lockedAction.move.name : "Switching Squad Member"}</strong>
                   </div>
                 )}
               </div>
             )}
 
             {phase === "picking" && (
-              <div className="grid grid-cols-1 xl:grid-cols-2 h-full gap-4 overflow-y-auto xl:overflow-visible">
-                {/* Moves */}
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-[var(--color-text-primary)] mb-2">Attack:</span>
-                  <div className="grid grid-cols-2 gap-2 flex-1">
+              <div className="grid grid-cols-1 xl:grid-cols-12 h-full gap-5 overflow-y-auto xl:overflow-visible">
+                
+                {/* Attack Triggers (7 Columns on XL) */}
+                <div className="flex flex-col xl:col-span-7">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-blue-300 mb-3 border-b border-white/10 pb-1.5">
+                    <span>⚡</span> Command Attacks
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 flex-1">
                     {me.active.moves.map((m, i) => (
                       <button 
                         key={i}
                         onClick={() => handleMove(m)}
                         disabled={m.currentPp <= 0}
-                        className="group relative flex flex-col items-start justify-center px-2 sm:px-3 py-2 rounded-xl disabled:opacity-50 transition-all border-4 move-btn cursor-pointer hover:-translate-y-1 active:translate-y-1 active:shadow-none bg-white"
+                        className="group relative flex flex-col items-start justify-center p-3 rounded-2xl disabled:opacity-40 transition-all border text-left cursor-pointer bg-slate-950/80 hover:bg-slate-800 hover:-translate-y-1 active:translate-y-0.5 shadow-lg overflow-hidden"
                         style={{
-                          borderColor: `var(--color-type-${m.type.toLowerCase()})`,
-                          backgroundColor: `color-mix(in srgb, var(--color-type-${m.type.toLowerCase()}) 10%, #ffffff)`,
-                          boxShadow: m.currentPp > 0 ? `0 4px 0 var(--color-type-${m.type.toLowerCase()})` : 'none'
+                          borderColor: m.currentPp > 0 ? `var(--color-type-${m.type.toLowerCase()})` : 'rgba(255,255,255,0.1)',
+                          boxShadow: m.currentPp > 0 ? `0 0 15px color-mix(in srgb, var(--color-type-${m.type.toLowerCase()}) 30%, transparent)` : 'none'
                         }}
                       >
-                        <div className="flex justify-between w-full items-center">
-                          <span className="font-bold text-[var(--color-text-primary)] text-sm">{m.name}</span>
-                          <span className="text-[10px] font-mono text-[var(--color-text-secondary)]">PP {m.currentPp}/{m.pp}</span>
+                        <div className="flex justify-between w-full items-center mb-1">
+                          <span className="font-display font-black text-white text-sm sm:text-base capitalize group-hover:text-amber-300 transition-colors">{m.name}</span>
+                          <span className="text-[11px] font-mono font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded-md border border-white/5">
+                            PP {m.currentPp}/{m.pp}
+                          </span>
                         </div>
-                        <div className="text-[0.65rem] text-[var(--color-text-muted)] uppercase tracking-wider font-bold">
-                          {m.type}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded text-white tracking-wider shadow-sm" style={{ backgroundColor: `var(--color-type-${m.type.toLowerCase()})` }}>
+                            {m.type}
+                          </span>
                         </div>
 
-                        {/* Move Tooltip */}
-                        <div className="hidden xl:group-hover:block absolute bottom-full left-0 mb-2 w-56 p-2 bg-[var(--color-bg-panel)] border border-[var(--color-border)] rounded shadow-2xl text-left z-[100] text-xs cursor-default">
-                          <div className="font-bold text-[var(--color-text-primary)] mb-1.5 flex items-center gap-2">
+                        {/* Telemetry Move Popout */}
+                        <div className="hidden xl:group-hover:block absolute bottom-full left-0 mb-3 w-64 p-3.5 bg-slate-950 border border-white/20 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.9)] text-left z-[100] text-xs cursor-default backdrop-blur-xl">
+                          <div className="font-black text-white mb-2 flex items-center gap-2 border-b border-white/10 pb-1.5">
                             <span className="px-1.5 py-0.5 rounded uppercase tracking-wider text-[9px] text-white" style={{ backgroundColor: `var(--color-type-${m.type.toLowerCase()})` }}>{m.type}</span>
-                            {m.damageClass && <span className="text-[var(--color-text-muted)] capitalize text-[10px]">{m.damageClass}</span>}
+                            {m.damageClass && <span className="text-slate-400 capitalize font-mono text-[10px]">{m.damageClass}</span>}
                           </div>
-                          <div className="text-[var(--color-text-secondary)] mb-1.5">
-                            Power: <span className="text-[var(--color-text-primary)]">{m.power || "—"}</span> | Acc: <span className="text-[var(--color-text-primary)]">{m.accuracy || "—"}</span>
+                          <div className="text-slate-300 font-mono mb-2 text-[11px]">
+                            PWR: <span className="text-amber-400 font-bold">{m.power || "—"}</span> | ACC: <span className="text-blue-400 font-bold">{m.accuracy || "—"}</span>
                           </div>
-                          <div className="text-[var(--color-text-primary)] leading-snug">
-                            {m.effect || "No additional effect."}
+                          <div className="text-slate-300 leading-snug font-sans text-xs">
+                            {m.effect || "No additional combat status effects applied."}
                           </div>
                         </div>
                       </button>
@@ -499,75 +527,97 @@ export default function Battle() {
                   </div>
                 </div>
 
-                {/* Switch Bench */}
-                <div className="flex flex-col xl:border-l border-[var(--color-border)] xl:pl-4">
-                  <span className="text-sm font-bold text-[var(--color-text-primary)] mb-2">Switch:</span>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-2">
+                {/* Squad Switch Bench (5 Columns on XL) */}
+                <div className="flex flex-col xl:col-span-5 xl:border-l border-white/10 xl:pl-5">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-300 mb-3 border-b border-white/10 pb-1.5">
+                    <span>🛡️</span> Deploy Reserves
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
                     {me.bench.map((b) => (
                       <button
                         key={b.benchIndex}
                         onClick={() => handleSwitch(b.benchIndex)}
                         disabled={b.currentHp <= 0}
-                        className="flex items-center gap-2 p-1.5 bg-gray-50 border-4 border-[var(--color-border)] rounded-xl disabled:opacity-50 transition-all text-left bench-btn cursor-pointer hover:-translate-y-1 hover:shadow-[0_4px_0_var(--color-border)] active:translate-y-1 active:shadow-none"
+                        className="flex items-center gap-2.5 p-2 bg-slate-950/80 border border-white/10 rounded-2xl disabled:opacity-30 disabled:grayscale transition-all text-left cursor-pointer hover:bg-slate-800 hover:border-emerald-400/50 hover:shadow-[0_4px_15px_rgba(16,185,129,0.25)] hover:-translate-y-0.5 active:translate-y-0"
                       >
-                        <img src={b.spriteUrl} alt={b.name} className="w-8 h-8 object-contain drop-shadow-md" />
+                        <div className="w-10 h-10 flex items-center justify-center p-0.5 flex-shrink-0">
+                          <PokemonSprite id={b.id} spriteUrl={b.spriteUrl} name={b.name} variant="front-gif" className="w-full h-full object-contain filter drop-shadow" />
+                        </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-bold text-[var(--color-text-primary)] text-xs truncate mb-0.5">{b.name}</div>
+                          <div className="font-extrabold text-white text-xs capitalize truncate mb-1">{b.name.replace(/-/g, " ")}</div>
                           <HpBar current={b.currentHp} max={b.maxHp} size="sm" showText={false} />
                         </div>
                       </button>
                     ))}
                   </div>
                 </div>
+
               </div>
             )}
           </div>
         </div>
 
-        {/* Right Column (Battle Log) */}
+        {/* Right Column (Live Telemetry Log) */}
         <div className="w-full lg:w-96 flex flex-col flex-shrink-0 h-64 lg:h-auto min-h-0">
           <BattleLog entries={logEntries} />
         </div>
 
       </div>
 
-      {/* Modals */}
+      {/* ══ Modals ══ */}
       {!isConnected && !modalMessage && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-yellow-500/90 text-yellow-950 px-6 py-2 rounded-full font-bold shadow-lg z-50 flex items-center gap-2 animate-bounce">
-          <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
-          Connection lost. Reconnecting...
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-amber-500/90 backdrop-blur-md text-slate-950 px-6 py-2.5 rounded-full font-black shadow-[0_0_30px_rgba(245,158,11,0.6)] z-[200] flex items-center gap-3 animate-bounce border border-white/40">
+          <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
+          <span>DISCONNECTED — REESTABLISHING SOCKET...</span>
         </div>
       )}
 
       {opponentReconnectingMsg && (
-        <div className="absolute inset-0 z-40 bg-[var(--color-bg-deep)]/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-card p-6 text-center max-w-sm w-full animate-fade-in border-[var(--color-warning)]">
-            <div className="text-[var(--color-warning)] mb-4 w-8 h-8 mx-auto animate-spin rounded-full border-2 border-[var(--color-warning)] border-t-transparent"></div>
-            <div className="font-bold text-lg mb-2">{opponentReconnectingMsg}</div>
-            <div className="text-sm text-[var(--color-text-muted)]">
-              The battle will resume automatically.
+        <div className="absolute inset-0 z-[150] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          <div className="glass-card p-8 text-center max-w-md w-full bg-slate-900 border border-amber-400/40 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.9)] space-y-4">
+            <div className="w-12 h-12 mx-auto rounded-full bg-amber-500/10 border-2 border-amber-400/40 flex items-center justify-center shadow-[0_0_25px_rgba(245,158,11,0.3)] animate-pulse">
+              <span className="w-6 h-6 border-4 border-amber-400 border-t-transparent rounded-full animate-spin block"></span>
             </div>
+            <div className="font-display font-black text-xl text-white uppercase tracking-wider">{opponentReconnectingMsg}</div>
+            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
+              Match paused. Arena state is locked until opponent reconnects.
+            </p>
           </div>
         </div>
       )}
 
+      {/* Force Switch Modal */}
       {phase === "force-switch" && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[var(--color-bg-deep)]/60 backdrop-blur-sm p-2 sm:p-4 animate-fade-in">
-          <div className="w-full max-w-xl bg-white border-4 border-[var(--color-text-primary)] rounded-t-3xl p-4 sm:p-6 shadow-[0_-10px_0_var(--color-text-primary)] animate-slide-up pb-10">
-            <div className="text-xl font-black text-[var(--color-danger)] mb-4 text-center uppercase tracking-widest">Your Pokémon fainted! Choose replacement:</div>
-            <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/85 backdrop-blur-lg p-4 animate-fade-in">
+          <div className="w-full max-w-lg bg-slate-900 border border-red-500/40 rounded-3xl p-6 shadow-[0_25px_80px_rgba(0,0,0,0.9)] animate-scale-in flex flex-col max-h-[85vh]">
+            <div className="text-center mb-6 border-b border-white/10 pb-4">
+              <span className="inline-block p-3 rounded-2xl bg-red-500/15 text-red-400 border border-red-500/30 text-2xl mb-2 shadow-[0_0_20px_rgba(239,68,68,0.3)] animate-bounce">
+                💀
+              </span>
+              <h2 className="text-2xl font-display font-black text-white uppercase tracking-wider">Active Fainted!</h2>
+              <p className="text-xs font-bold text-red-300 uppercase tracking-widest mt-1">Deploy replacement squad member immediately:</p>
+            </div>
+            
+            <div className="flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1">
               {forceSwitchBench.map((b) => (
                 <button
                   key={b.benchIndex}
                   onClick={() => handleSwitch(b.benchIndex)}
                   disabled={b.currentHp <= 0}
-                  className="flex items-center gap-4 p-4 bg-[var(--color-bg-panel)] hover:bg-[var(--color-bg-hover)] border-4 border-[var(--color-border)] rounded-2xl disabled:opacity-50 transition-all hover:-translate-y-1 hover:shadow-[0_4px_0_var(--color-border)] active:translate-y-1 active:shadow-none text-left"
+                  className="group flex items-center gap-4 p-4 bg-slate-950/80 hover:bg-slate-800 border border-white/15 hover:border-emerald-400/60 rounded-2xl disabled:opacity-30 disabled:grayscale transition-all hover:-translate-y-1 hover:shadow-[0_0_25px_rgba(16,185,129,0.25)] active:scale-[0.99] text-left cursor-pointer"
                 >
-                  <img src={b.spriteUrl} alt={b.name} className="w-14 h-14 object-contain drop-shadow-md" />
-                  <div className="flex-1">
-                    <div className="font-bold text-[var(--color-text-primary)] text-lg mb-1">{b.name}</div>
+                  <div className="w-16 h-16 flex items-center justify-center p-1 bg-slate-900 rounded-xl border border-white/5 flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <PokemonSprite id={b.id} spriteUrl={b.spriteUrl} name={b.name} variant="front-gif" className="w-full h-full object-contain filter drop-shadow" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-display font-black text-white text-lg capitalize truncate mb-1 group-hover:text-emerald-300 transition-colors">{b.name.replace(/-/g, " ")}</div>
                     <HpBar current={b.currentHp} max={b.maxHp} size="md" />
                   </div>
+                  {b.currentHp > 0 && (
+                    <span className="px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-400/30 text-emerald-300 text-xs font-black uppercase tracking-widest group-hover:bg-emerald-500 group-hover:text-slate-950 transition-colors">
+                      Deploy
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -576,16 +626,20 @@ export default function Battle() {
       )}
 
       {modalMessage && (
-        <div className="fixed inset-0 bg-[var(--color-bg-deep)]/80 flex items-center justify-center z-50 p-4">
-          <div className="glass-card p-8 max-w-sm w-full text-center space-y-6">
-            <div className="text-4xl">🔌</div>
-            <h2 className="text-xl font-black text-[var(--color-text-primary)] uppercase tracking-wider">Battle Ended</h2>
-            <p className="text-[var(--color-text-secondary)] font-bold">{modalMessage}</p>
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl flex items-center justify-center z-[250] p-4 animate-fade-in">
+          <div className="glass-card p-8 sm:p-10 max-w-md w-full bg-slate-900 border border-white/20 rounded-3xl text-center shadow-[0_30px_90px_rgba(0,0,0,0.95)] space-y-6">
+            <div className="w-20 h-20 mx-auto rounded-3xl bg-blue-500/10 border border-blue-400/30 flex items-center justify-center text-4xl shadow-[0_0_35px_rgba(59,130,246,0.3)] animate-pulse">
+              🏆
+            </div>
+            <div>
+              <h2 className="text-3xl font-display font-black text-white uppercase tracking-wider mb-2">Match Terminated</h2>
+              <p className="text-slate-300 font-extrabold text-sm sm:text-base bg-slate-950/80 p-4 rounded-2xl border border-white/10 shadow-inner">{modalMessage}</p>
+            </div>
             <button 
               onClick={() => { socket.disconnect(); navigate("/build"); }}
-              className="w-full py-3 bg-[var(--color-danger)] text-white rounded-2xl font-black uppercase tracking-widest border-4 border-red-700 shadow-[0_6px_0_#991b1b] hover:-translate-y-1 hover:shadow-[0_8px_0_#991b1b] active:translate-y-2 active:shadow-none transition-all"
+              className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-display font-black text-lg uppercase tracking-widest border border-white/20 shadow-[0_0_25px_rgba(59,130,246,0.5)] hover:shadow-[0_0_40px_rgba(59,130,246,0.8)] hover:-translate-y-1 active:translate-y-0.5 transition-all"
             >
-              Return to Lobby
+              Return to Roster
             </button>
           </div>
         </div>
