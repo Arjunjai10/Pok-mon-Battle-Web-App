@@ -503,9 +503,8 @@ describe("Turn Order", () => {
     const slow = { active: makePokemon({ name: "Slow", currentStats: { attack: 100, defense: 100, specialAttack: 100, specialDefense: 100, speed: 50 } }) };
     const move = { type: ACTION_TYPE.MOVE, move: makeMove() };
 
-    // p1 is fast, p2 is slow
-    const order = determineTurnOrder(fast, slow, move, move);
-    assert.strictEqual(order, "p1First");
+    const order = determineTurnOrder({ p1: fast, p2: slow }, { p1: move, p2: move });
+    assert.strictEqual(order[0], "p1");
   });
 
   test("Slower Pokémon goes second", () => {
@@ -513,9 +512,8 @@ describe("Turn Order", () => {
     const slow = { active: makePokemon({ currentStats: { attack: 100, defense: 100, specialAttack: 100, specialDefense: 100, speed: 50 } }) };
     const move = { type: ACTION_TYPE.MOVE, move: makeMove() };
 
-    // p2 is fast, p1 is slow
-    const order = determineTurnOrder(slow, fast, move, move);
-    assert.strictEqual(order, "p2First");
+    const order = determineTurnOrder({ p1: slow, p2: fast }, { p1: move, p2: move });
+    assert.strictEqual(order[0], "p2");
   });
 
   test("Higher priority move goes before faster Pokémon", () => {
@@ -524,9 +522,8 @@ describe("Turn Order", () => {
     const priorityMove = { type: ACTION_TYPE.MOVE, move: makeMove({ name: "Quick Attack", priority: 1 }) };
     const normalMove = { type: ACTION_TYPE.MOVE, move: makeMove({ name: "Tackle", priority: 0 }) };
 
-    // p1 uses Quick Attack (+1 priority), p2 uses Tackle (slower but p2 has higher speed)
-    const order = determineTurnOrder(p1State, p2State, priorityMove, normalMove);
-    assert.strictEqual(order, "p1First");
+    const order = determineTurnOrder({ p1: p1State, p2: p2State }, { p1: priorityMove, p2: normalMove });
+    assert.strictEqual(order[0], "p1");
   });
 
   test("Switch always beats an attack", () => {
@@ -535,19 +532,17 @@ describe("Turn Order", () => {
     const switchAction = { type: ACTION_TYPE.SWITCH, switchTo: 0 };
     const attackAction = { type: ACTION_TYPE.MOVE, move: makeMove() };
 
-    // p1 switches (lower speed but switch goes first)
-    const order = determineTurnOrder(p1State, p2State, switchAction, attackAction);
-    assert.strictEqual(order, "p1First");
+    const order = determineTurnOrder({ p1: p1State, p2: p2State }, { p1: switchAction, p2: attackAction });
+    assert.strictEqual(order[0], "p1");
   });
 
   test("Paralyzed Pokémon has quartered speed for order purposes", () => {
     const p1State = { active: makePokemon({ status: STATUS.PARALYSIS, currentStats: { attack: 100, defense: 100, specialAttack: 100, specialDefense: 100, speed: 120 } }) };
-    const p2State = { active: makePokemon({ currentStats: { attack: 100, defense: 100, specialAttack: 100, specialDefense: 100, speed: 40 } }) }; // slower but p1 is paralyzed (120/4=30 < 40)
+    const p2State = { active: makePokemon({ currentStats: { attack: 100, defense: 100, specialAttack: 100, specialDefense: 100, speed: 40 } }) };
     const move = { type: ACTION_TYPE.MOVE, move: makeMove() };
 
-    const order = determineTurnOrder(p1State, p2State, move, move);
-    // p1 speed = floor(120/4) = 30, p2 speed = 40 → p2 goes first
-    assert.strictEqual(order, "p2First");
+    const order = determineTurnOrder({ p1: p1State, p2: p2State }, { p1: move, p2: move });
+    assert.strictEqual(order[0], "p2");
   });
 });
 
@@ -565,7 +560,7 @@ describe("Full Turn Resolution (resolveTurn)", () => {
     const p1Action = { type: ACTION_TYPE.MOVE, move };
     const p2Action = { type: ACTION_TYPE.MOVE, move };
 
-    const { newState } = resolveTurn(state, p1Action, p2Action, { randomFactor: 1.0, hitRoll: 0.0 });
+    const { newState } = resolveTurn(state, { p1: p1Action, p2: p2Action }, { randomFactor: 1.0, hitRoll: 0.0 });
 
     assert.ok(newState.p1.active.currentHp < 250, "P1 should have taken damage");
     assert.ok(newState.p2.active.currentHp < 250, "P2 should have taken damage");
@@ -579,10 +574,10 @@ describe("Full Turn Resolution (resolveTurn)", () => {
     state.p2.active.moves = [makeMove()];
     const action = { type: ACTION_TYPE.MOVE, move: makeMove() };
 
-    const { newState: s1 } = resolveTurn(state, action, action, { randomFactor: 1.0, hitRoll: 0.0 });
+    const { newState: s1 } = resolveTurn(state, { p1: action, p2: action }, { randomFactor: 1.0, hitRoll: 0.0 });
     assert.strictEqual(s1.turn, 2);
 
-    const { newState: s2 } = resolveTurn(s1, action, action, { randomFactor: 1.0, hitRoll: 0.0 });
+    const { newState: s2 } = resolveTurn(s1, { p1: action, p2: action }, { randomFactor: 1.0, hitRoll: 0.0 });
     assert.strictEqual(s2.turn, 3);
   });
 
@@ -593,7 +588,7 @@ describe("Full Turn Resolution (resolveTurn)", () => {
     const originalHp = state.p2.active.currentHp;
     const action = { type: ACTION_TYPE.MOVE, move: makeMove({ type: "Normal", power: 40 }) };
 
-    resolveTurn(state, action, action, { randomFactor: 1.0, hitRoll: 0.0 });
+    resolveTurn(state, { p1: action, p2: action }, { randomFactor: 1.0, hitRoll: 0.0 });
     assert.strictEqual(state.p2.active.currentHp, originalHp, "Original state should not be mutated");
   });
 
@@ -604,27 +599,24 @@ describe("Full Turn Resolution (resolveTurn)", () => {
     state.p2.active.moves = [move];
     const action = { type: ACTION_TYPE.MOVE, move };
 
-    const { log } = resolveTurn(state, action, action, { randomFactor: 1.0, hitRoll: 0.0 });
+    const { log } = resolveTurn(state, { p1: action, p2: action }, { randomFactor: 1.0, hitRoll: 0.0 });
     const hasUsed = log.some(l => l.includes("used Tackle"));
     assert.ok(hasUsed, `Expected 'used Tackle' in log. Got: ${JSON.stringify(log)}`);
   });
 
   test("A missed move is logged", () => {
     const state = makeBattleState();
-    // Use a move with 70% accuracy; hitRoll=0.80 is > 0.70, so it misses
     const move = makeMove({ name: "Scratch", accuracy: 70 });
     const p2Move = makeMove({ name: "Tackle", accuracy: 100 });
     state.p1.active.moves = [move];
     state.p2.active.moves = [p2Move];
-    // Make P1 faster so it acts first and misses — P2 then hits
     state.p1.active.currentStats.speed = 999;
     state.p2.active.currentStats.speed = 1;
 
     const { log } = resolveTurn(
       state,
-      { type: ACTION_TYPE.MOVE, move },
-      { type: ACTION_TYPE.MOVE, move: p2Move },
-      { hitRoll: 0.80, randomFactor: 1.0 } // 0.80 > 70/100=0.70 → P1 misses
+      { p1: { type: ACTION_TYPE.MOVE, move }, p2: { type: ACTION_TYPE.MOVE, move: p2Move } },
+      { hitRoll: 0.80, randomFactor: 1.0 }
     );
     assert.ok(log.some(l => l.includes("missed")), `Expected 'missed' in log. Got: ${JSON.stringify(log)}`);
   });
@@ -641,12 +633,10 @@ describe("Full Turn Resolution (resolveTurn)", () => {
 
     const { log, newState } = resolveTurn(
       state,
-      { type: ACTION_TYPE.MOVE, move: thunderMove },
-      { type: ACTION_TYPE.MOVE, move: thunderMove },
+      { p1: { type: ACTION_TYPE.MOVE, move: thunderMove }, p2: { type: ACTION_TYPE.MOVE, move: thunderMove } },
       { randomFactor: 1.0, hitRoll: 0.0 }
     );
 
-    // P2 (Ground type) should be immune to P1's Electric move
     assert.strictEqual(newState.p2.active.currentHp, 250, "Ground-type should take 0 damage from Electric");
   });
 
@@ -658,8 +648,7 @@ describe("Full Turn Resolution (resolveTurn)", () => {
 
     const { newState } = resolveTurn(
       state,
-      { type: ACTION_TYPE.MOVE, move },
-      { type: ACTION_TYPE.MOVE, move: makeMove() },
+      { p1: { type: ACTION_TYPE.MOVE, move }, p2: { type: ACTION_TYPE.MOVE, move: makeMove() } },
       { randomFactor: 1.0, hitRoll: 0.0 }
     );
 
@@ -673,7 +662,7 @@ describe("Full Turn Resolution (resolveTurn)", () => {
     const move = makeMove();
     const action = { type: ACTION_TYPE.MOVE, move };
 
-    const { newState, log } = resolveTurn(state, action, action);
+    const { newState, log } = resolveTurn(state, { p1: action, p2: action });
     assert.strictEqual(newState.winner, "p1");
     assert.ok(log.some(l => l.includes("already over")));
   });
@@ -710,19 +699,16 @@ describe("Fainting & Win Conditions", () => {
 
   test("Win condition is set when P2 is KOed with no bench", () => {
     const state = makeBattleState({}, { pokemon: { currentHp: 1 }, bench: [] });
-    // Use a powerful move that guarantees a KO
     const move = makeMove({ name: "Hyper Beam", type: "Normal", power: 150 });
     state.p1.active.moves = [move];
-    state.p2.active.moves = [makeMove()]; // P2 uses weak move, P1 has much higher speed
+    state.p2.active.moves = [makeMove()];
 
-    // Make P1 faster to ensure P1 attacks first and KOs P2
     state.p1.active.currentStats.speed = 999;
     state.p2.active.currentStats.speed = 1;
 
     const { newState } = resolveTurn(
       state,
-      { type: ACTION_TYPE.MOVE, move },
-      { type: ACTION_TYPE.MOVE, move: makeMove() },
+      { p1: { type: ACTION_TYPE.MOVE, move }, p2: { type: ACTION_TYPE.MOVE, move: makeMove() } },
       { randomFactor: 1.0, hitRoll: 0.0 }
     );
 
@@ -740,8 +726,7 @@ describe("Fainting & Win Conditions", () => {
 
     const { log } = resolveTurn(
       state,
-      { type: ACTION_TYPE.MOVE, move },
-      { type: ACTION_TYPE.MOVE, move: makeMove() },
+      { p1: { type: ACTION_TYPE.MOVE, move }, p2: { type: ACTION_TYPE.MOVE, move: makeMove() } },
       { randomFactor: 1.0, hitRoll: 0.0 }
     );
 
@@ -750,10 +735,10 @@ describe("Fainting & Win Conditions", () => {
 
   test("Second Pokémon does not attack after fainting from first Pokémon's move", () => {
     const state = makeBattleState(
-      { pokemon: { currentHp: 500, maxHp: 500 } }, // P1 very bulky
+      { pokemon: { currentHp: 500, maxHp: 500 } },
       { pokemon: { currentHp: 1 }, bench: [] }
     );
-    state.p1.active.currentStats.speed = 999; // P1 always goes first
+    state.p1.active.currentStats.speed = 999;
     state.p2.active.currentStats.speed = 1;
 
     const bigMove = makeMove({ name: "Hyper Beam", type: "Normal", power: 150 });
@@ -763,14 +748,12 @@ describe("Fainting & Win Conditions", () => {
 
     const { newState, log } = resolveTurn(
       state,
-      { type: ACTION_TYPE.MOVE, move: bigMove },
-      { type: ACTION_TYPE.MOVE, move: p2Move },
+      { p1: { type: ACTION_TYPE.MOVE, move: bigMove }, p2: { type: ACTION_TYPE.MOVE, move: p2Move } },
       { randomFactor: 1.0, hitRoll: 0.0 }
     );
 
-    // P1 should be at full HP (P2 fainted before attacking)
     assert.strictEqual(newState.p1.active.currentHp, 500, "P1 should take no damage since P2 fainted first");
-    assert.ok(log.some(l => l.includes("can no longer fight")));
+    assert.ok(log.some(l => l.includes("fainted")));
   });
 });
 
