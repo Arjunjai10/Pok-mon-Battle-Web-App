@@ -19,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 import { usePokeData } from "../hooks/usePokeData.js";
 import PokemonCard from "../components/PokemonCard.jsx";
 import MoveButton from "../components/MoveButton.jsx";
+import PokemonSprite from "../components/PokemonSprite.jsx";
 import HpBar from "../components/HpBar.jsx";
 import { TypeBadge, STAT_LABELS, groupLearnsetByMethod, getMethodMeta } from "../utils/typeUtils.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -294,16 +295,16 @@ export default function TeamBuilder() {
   return (
     <div className="flex flex-col h-screen bg-[var(--color-bg-deep)] overflow-hidden">
       {/* ── Header ── */}
-      <header className="flex-none flex items-center justify-between px-6 py-4 bg-[var(--color-danger)] border-b-4 border-red-700 z-30 sticky top-0 shadow-md">
+      <header className="flex-none flex items-center justify-between px-6 py-4 bg-slate-950/90 backdrop-blur-xl border-b border-white/15 z-30 sticky top-0 shadow-[0_4px_25px_rgba(0,0,0,0.6)]">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 flex items-center justify-center bg-white rounded-full shadow-inner">
-            <span className="text-2xl drop-shadow-sm">⚔️</span>
+          <div className="w-11 h-11 flex items-center justify-center bg-gradient-to-tr from-red-600 to-red-500 rounded-2xl border border-white/30 shadow-[0_0_15px_rgba(239,68,68,0.5)]">
+            <span className="text-2xl drop-shadow">⚔️</span>
           </div>
           <div>
-            <h1 className="font-display font-extrabold text-3xl text-white leading-none tracking-wide drop-shadow-md">
-              Pokémon Battle
+            <h1 className="font-display font-black text-2xl sm:text-3xl text-white leading-none tracking-wide drop-shadow">
+              Pokémon Battle <span className="text-blue-400">Roster</span>
             </h1>
-            <p className="text-[0.75rem] font-bold text-red-200 mt-1 uppercase tracking-widest drop-shadow-sm">Gen I • Team Builder</p>
+            <p className="text-[0.7rem] font-bold text-slate-400 mt-1 uppercase tracking-widest">Gen I • Competitive Team Builder</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -461,32 +462,32 @@ export default function TeamBuilder() {
                 <button 
                   key={idx} 
                   onClick={() => slot && setActivePokemon(slot.pokemon)} 
-                  className={`w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0 rounded-full flex items-center justify-center transition-all duration-200 border-4 relative ${slot ? 'bg-white cursor-pointer hover:-translate-y-2 hover:shadow-[0_4px_0_var(--color-border)]' : 'bg-[var(--color-bg-deep)] opacity-80 cursor-default border-dashed border-[var(--color-border)]'} ${activePokemon?.id === slot?.pokemon?.id ? 'border-[var(--color-primary)] shadow-[0_4px_0_var(--color-primary)] bg-blue-50 scale-110 -translate-y-2' : slot ? 'border-[var(--color-border)]' : ''}`}
+                  className={`w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0 rounded-2xl flex items-center justify-center transition-all duration-200 border relative ${slot ? 'bg-slate-800/90 border-white/20 cursor-pointer hover:-translate-y-2 hover:border-blue-400 hover:shadow-[0_8px_20px_rgba(59,130,246,0.3)]' : 'bg-slate-900/60 opacity-50 cursor-default border-dashed border-white/15'} ${activePokemon?.id === slot?.pokemon?.id ? 'border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.5)] bg-blue-500/20 scale-105 -translate-y-1.5' : ''}`}
                 >
                    {slot ? (
-                     <>
-                       <img src={slot.pokemon.spriteUrl} alt={slot.pokemon.name} className="w-10 h-10 sm:w-12 sm:h-12 object-contain drop-shadow-md z-10 hover:animate-float" />
-                     </>
+                     <div className="w-11 h-11 sm:w-13 sm:h-13 flex items-center justify-center p-0.5">
+                       <PokemonSprite id={slot.pokemon.id} spriteUrl={slot.pokemon.spriteUrl} name={slot.pokemon.name} variant="front-gif" className="w-full h-full object-contain z-10 hover:animate-float" />
+                     </div>
                    ) : (
-                     <div className="text-xl font-bold text-[var(--color-text-muted)] opacity-40">{idx + 1}</div>
+                     <div className="text-lg font-black text-slate-500 opacity-50 font-mono">{idx + 1}</div>
                    )}
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="flex flex-col items-end gap-2 w-full sm:w-auto">
+          <div className="flex flex-col items-end gap-2.5 w-full sm:w-auto">
             {validationErrors.length > 0 && (
-              <div className="text-[0.65rem] font-bold uppercase tracking-wider text-[var(--color-danger)] text-right hidden sm:block animate-fade-in bg-red-50 px-2 py-1 rounded border border-red-200">
-                {validationErrors[0]}
+              <div className="text-xs font-black uppercase tracking-wider text-amber-300 text-right hidden sm:block animate-fade-in bg-amber-500/15 px-3 py-1 rounded-xl border border-amber-500/30 shadow-inner">
+                ⚠️ {validationErrors[0]}
               </div>
             )}
-            <div className="flex gap-2 w-full sm:w-auto">
+            <div className="flex gap-3 w-full sm:w-auto">
               {user && (
                 <button
                   onClick={handleSaveTeam}
                   disabled={!canProceed || isSaving}
-                  className={`w-full sm:w-auto px-6 py-3.5 rounded-full font-black uppercase tracking-widest text-sm transition-all duration-200 border-4 ${canProceed ? 'bg-[var(--color-bg-card)] border-[var(--color-primary)] text-[var(--color-primary)] hover:-translate-y-1 shadow-[0_6px_0_var(--color-primary)] active:translate-y-1 active:shadow-none' : 'bg-[var(--color-bg-deep)] text-[var(--color-text-muted)] cursor-not-allowed border-[var(--color-border)] shadow-none'}`}
+                  className={`w-full sm:w-auto px-6 py-3.5 rounded-2xl font-black uppercase tracking-widest text-xs transition-all border ${canProceed ? 'bg-slate-800 border-blue-400/50 text-blue-300 hover:bg-slate-700 shadow-[0_0_15px_rgba(59,130,246,0.25)] hover:shadow-[0_0_25px_rgba(59,130,246,0.4)] active:scale-95' : 'bg-slate-900/50 text-slate-600 cursor-not-allowed border-white/5 shadow-none'}`}
                 >
                   {isSaving ? "Saving..." : "Save Team"}
                 </button>
@@ -494,9 +495,9 @@ export default function TeamBuilder() {
               <button 
                 onClick={handleProceed}
                 disabled={!canProceed}
-                className={`w-full sm:w-auto px-8 py-3.5 rounded-full font-black uppercase tracking-widest text-sm transition-all duration-200 border-4 ${canProceed ? 'bg-[var(--color-primary)] border-blue-700 text-white hover:-translate-y-1 shadow-[0_6px_0_#1d4ed8] active:translate-y-1 active:shadow-none' : 'bg-[var(--color-bg-deep)] text-[var(--color-text-muted)] cursor-not-allowed border-[var(--color-border)] shadow-none'}`}
+                className={`w-full sm:w-auto px-8 py-3.5 rounded-2xl font-black uppercase tracking-widest text-xs transition-all border ${canProceed ? 'bg-gradient-to-r from-blue-600 to-indigo-600 border-white/20 text-white hover:from-blue-500 hover:to-indigo-500 shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_35px_rgba(59,130,246,0.7)] active:scale-95' : 'bg-slate-900/50 text-slate-600 cursor-not-allowed border-white/5 shadow-none'}`}
               >
-                {canProceed ? "Ready for Battle →" : "Incomplete Team"}
+                {canProceed ? "Ready for Battle →" : "Incomplete Roster"}
               </button>
             </div>
           </div>
@@ -548,15 +549,18 @@ function DetailPanel({
           Close
         </button>
 
-        {/* Sprite */}
-        <div className="relative flex-none">
-          <img
-            src={pokemon.spriteUrl}
-            alt={pokemon.name}
-            className="w-28 h-28 object-contain drop-shadow-xl"
+        {/* Animated Sprite */}
+        <div className="relative flex-none w-28 h-28 flex items-center justify-center p-1">
+          <PokemonSprite
+            id={pokemon.id}
+            spriteUrl={pokemon.spriteUrl}
+            name={pokemon.name}
+            variant="front-gif"
+            animate={true}
+            className="w-full h-full object-contain filter drop-shadow-[0_10px_15px_rgba(0,0,0,0.6)]"
           />
           {isOnTeam && (
-            <span className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-[var(--color-success)] flex items-center justify-center text-white text-xs font-bold shadow">
+            <span className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs font-bold shadow-[0_0_10px_rgba(16,185,129,0.8)] border border-white/40">
               ✓
             </span>
           )}
@@ -931,11 +935,15 @@ function TeamSlot({ index, slot, isActive, onClick, onRemove, moveIndex }) {
         </span>
 
         {/* Sprite (small) */}
-        <img
-          src={pokemon.spriteUrl}
-          alt={pokemon.name}
-          className="flex-none w-10 h-10 object-contain"
-        />
+        <div className="flex-none w-10 h-10 flex items-center justify-center">
+          <PokemonSprite
+            id={pokemon.id}
+            spriteUrl={pokemon.spriteUrl}
+            name={pokemon.name}
+            variant="front-gif"
+            className="w-full h-full object-contain"
+          />
+        </div>
 
         {/* Info */}
         <div className="flex-1 min-w-0">

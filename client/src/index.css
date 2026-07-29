@@ -4,27 +4,31 @@
 @import "tailwindcss";
 
 @theme {
-  /* ── Color Palette (Vibrant Nintendo Style) ── */
-  --color-bg-deep:     #F0F4F8; /* Light sky blue-ish gray */
-  --color-bg-card:     #FFFFFF; /* Pure white cards */
-  --color-bg-panel:    #F8FAFC; /* Slightly off white */
-  --color-bg-hover:    #E2E8F0;
-  --color-bg-input:    #FFFFFF;
+  /* ── Color Palette (Modern eSports & Dark Stadium Style) ── */
+  --color-bg-deep:     #090E1A; /* Ultra deep cosmic navy-slate */
+  --color-bg-card:     #121A2D; /* Sleek dark navy card background */
+  --color-bg-panel:    #19243E; /* Slightly lighter interactive panel */
+  --color-bg-hover:    #223255; /* Elevated hover state */
+  --color-bg-input:    #0D1527;
   
-  --color-border:      #CBD5E1; /* Soft border */
-  --color-border-glow: #94A3B8;
+  --color-border:        rgba(255, 255, 255, 0.12);
+  --color-border-glow:   #3B82F6;
+  --color-border-bright: rgba(255, 255, 255, 0.25);
 
-  --color-primary:     #3B82F6; /* Classic Blue */
+  --color-primary:     #3B82F6; /* Vibrant Blue */
   --color-primary-light: #60A5FA;
-  --color-accent:      #FACC15; /* Pikachu Yellow */
+  --color-accent:      #FACC15; /* Pikachu Electric Yellow */
   --color-accent-dim:  #EAB308;
-  --color-success:     #22C55E; /* Vibrant Green */
-  --color-danger:      #EF4444; /* Pokeball Red */
-  --color-warning:     #F97316; /* Charizard Orange */
+  --color-success:     #10B981; /* Neon Green */
+  --color-danger:      #EF4444; /* Crimson Red */
+  --color-warning:     #F97316; /* Blaze Orange */
+  --color-purple:      #8B5CF6; /* Psychic Purple */
+  --color-cyan:        #06B6D4; /* Ice Cyan */
 
-  --color-text-primary:   #0F172A; /* Dark slate */
-  --color-text-secondary: #334155;
-  --color-text-muted:     #64748B;
+  --color-text-primary:   #F8FAFC; /* Crisp white for dark theme */
+  --color-text-secondary: #CBD5E1; /* Soft silver */
+  --color-text-muted:     #94A3B8;
+  --color-text-dark:      #0F172A; /* Dark slate for high contrast buttons */
 
   /* ── Type Colors (Vibrant variants) ── */
   --color-type-normal:   #A8A878;
@@ -70,18 +74,23 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
-  /* Playful dotted background pattern */
-  background-image: radial-gradient(#CBD5E1 1.5px, transparent 1.5px);
-  background-size: 24px 24px;
+  /* Sleek cyber grid pattern with ambient stadium glow */
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.18) 0%, transparent 70%),
+    radial-gradient(circle at 85% 85%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+  background-attachment: fixed;
 }
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; border: 2px solid var(--color-bg-deep); }
-::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
-.custom-scrollbar::-webkit-scrollbar { height: 6px; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+::-webkit-scrollbar-track { background: var(--color-bg-deep); }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; border: 2px solid var(--color-bg-deep); }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+.custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
 
 /* ── Selection ── */
 ::selection { background: var(--color-primary); color: white; }
@@ -110,28 +119,48 @@ body {
   50%  { transform: translateY(10px) scale(0.95); opacity: 0.5; filter: grayscale(50%); }
   100% { transform: translateY(30px) scale(0.9); opacity: 0; filter: grayscale(100%); }
 }
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); }
+  50% { box-shadow: 0 0 25px rgba(59, 130, 246, 0.8); }
+}
 
 .animate-fade-in    { animation: bounce-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 .animate-scale-in   { animation: bounce-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 .animate-slide-up   { animation: slide-up-bouncy 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 .animate-faint-sink { animation: faint-sink 0.8s forwards cubic-bezier(0.32, 0, 0.67, 0); }
 .animate-float      { animation: float 3s ease-in-out infinite; }
+.animate-pulse-glow { animation: pulse-glow 2.5s ease-in-out infinite; }
 
-/* ── Game Card (replaces glass-card) ── */
+/* ── Modern Glassmorphism Card Utilities ── */
 .glass-card {
-  background: var(--color-bg-card);
-  border: 3px solid var(--color-border);
+  background: rgba(18, 26, 45, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
-  box-shadow: 0 8px 0 var(--color-border);
-  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.glass-card:hover {
+  border-color: var(--color-border-bright);
+  box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.6), 0 0 15px rgba(59, 130, 246, 0.15);
+}
+
+.glass-panel {
+  background: rgba(25, 36, 62, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
 }
 
 /* ── Skeleton loading ── */
 .skeleton {
   background: linear-gradient(90deg,
-    #E2E8F0 25%,
-    #F8FAFC 50%,
-    #E2E8F0 75%);
+    rgba(25, 36, 62, 0.4) 25%,
+    rgba(36, 52, 89, 0.6) 50%,
+    rgba(25, 36, 62, 0.4) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.2s infinite linear;
   border-radius: var(--radius-badge);
@@ -146,21 +175,21 @@ body {
 
 /* ── Interactive Game Buttons ── */
 .move-btn, .bench-btn {
-  transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
-  border: 2px solid var(--color-border);
-  box-shadow: 0 4px 0 var(--color-border);
+  transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 0 rgba(255, 255, 255, 0.05);
   background: var(--color-bg-card);
+  color: var(--color-text-primary);
 }
 
 .move-btn:hover:not(:disabled), .bench-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 0 var(--color-border-glow);
+  border-color: var(--color-primary-light);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3), 0 0 0 1px var(--color-primary-light);
   background: var(--color-bg-panel);
 }
 
 .move-btn:active:not(:disabled), .bench-btn:active:not(:disabled) {
-  transform: translateY(4px);
-  box-shadow: 0 0 0 var(--color-border);
+  transform: translateY(2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
-
-
